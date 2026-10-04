@@ -1,0 +1,17 @@
+{
+  "name": "epc-checker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Inspect and look up England & Wales domestic EPCs via the MHCLG Energy Certificate Data API",
+  "scripts": {
+    "inspect-register": "node src/inspect-register.js",
+    "check": "node src/check.js",
+    "lookup": "node src/lookup.js",
+    "retrofit": "node src/retrofit.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
