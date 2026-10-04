@@ -7,6 +7,7 @@
   "scripts": {
     "inspect-register": "node src/inspect-register.js",
     "check": "node src/check.js",
+    "lookup": "node src/lookup.js",
     "test": "node --test test/*.test.js"
   },
   "engines": {

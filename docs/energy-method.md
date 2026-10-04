@@ -108,14 +108,29 @@ Newest lodgements in the first page:
 
 The newest full certificate on that run was band **C**, SAP **71**, 40 m², mains-gas boiler and radiators — confirming the hydrate path works for a real SE postcode used in Greenwich lettings work.
 
+## Address-level lookup
+
+`npm run lookup` groups a postcode’s search rows by UPRN (fallback: normalised address), keeps certificate history, and can hydrate the newest RRN:
+
+```bash
+npm run lookup -- SE18 3EU --text
+npm run lookup -- SE18 3EU --address "76 Genesta" --text
+```
+
+Suggested improvements on full certificates only carry an `improvement_number`. The lookup resolves human labels through `/api/codes/info?code=improvement_summary|improvement_description&key=<number>`.
+
 ## Checker commands
 
 ```bash
 # Inspect N Greenwich search rows + 2 full certificate samples (JSON on stdout)
 npm run inspect-register -- 10
 
-# Look up a postcode; add --full to hydrate the newest returned RRN
+# Raw postcode search; add --full to hydrate the newest returned RRN
 npm run check -- SE18 3EU --limit 10 --full
+
+# Address-level view (newest cert per dwelling; optional hydrate)
+npm run lookup -- SE18 3EU --text
+npm run lookup -- SE18 3EU --address "76 Genesta" --text
 ```
 
 Environment:

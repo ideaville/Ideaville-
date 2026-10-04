@@ -69,5 +69,11 @@ export function createClient({
         certificate_number: certificateNumber,
       });
     },
+    getCodes() {
+      return request("/api/codes");
+    },
+    getCodeInfo(code, key) {
+      return request("/api/codes/info", { code, key });
+    },
   };
 }
