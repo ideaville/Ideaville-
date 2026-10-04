@@ -26,9 +26,15 @@ npm run lookup -- SE18 3EU --text
 npm run lookup -- SE18 3EU --address "76 Genesta" --text
 npm run lookup -- SE18 3EU --hydrate-all --text
 
+# Retrofit + grant/scheme screening (property-side EPC signals)
+npm run retrofit -- SE18 3EU --text
+npm run retrofit -- SE18 3EU --min-priority high --only-matches --text
+
 npm test
 ```
 
 `lookup` lists unique addresses for a postcode. Pass `--address` (or `--hydrate` / `--hydrate-all`) to pull the newest full certificate, including SAP scores and suggested improvements resolved via `/api/codes/info`.
+
+`retrofit` hydrates each address’s newest certificate and scores retrofit need plus possible scheme fits (Warm Homes: Local Grant, ECO4/LA Flex, Boiler Upgrade Scheme, PRS MEES). This is **property-side screening only** — income/benefits/funding queues still need confirmation.
 
 See [`../docs/energy-method.md`](../docs/energy-method.md) for what live Greenwich records contain.

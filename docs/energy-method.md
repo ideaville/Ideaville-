@@ -119,6 +119,28 @@ npm run lookup -- SE18 3EU --address "76 Genesta" --text
 
 Suggested improvements on full certificates only carry an `improvement_number`. The lookup resolves human labels through `/api/codes/info?code=improvement_summary|improvement_description&key=<number>`.
 
+## Retrofit need and grant / scheme screening
+
+`npm run retrofit` uses the newest full certificate per address to flag homes that look like retrofit candidates and which government schemes they *might* fit on **property-side** evidence:
+
+| Scheme | EPC-derivable gate used here | Still needs offline check |
+| --- | --- | --- |
+| Warm Homes: Local Grant | England private tenure + EPC **D–G** | Income ≤ £36k / benefits / eligible postcode; LA/GLA funding queue |
+| Warm Homes: Social Housing Fund | Social rented + typically inefficient stock (**D–G**) | Landlord / council programme nomination |
+| ECO4 / LA Flex | Owner-occupied **D–G**, or private rented **E–G** (common Flex pairing) | Household eligibility / supplier or LA Flex referral |
+| Boiler Upgrade Scheme | Not social housing; replaceable fossil/electric heat (not existing heat pump) | MCS installer quote; ownership rules |
+| PRS MEES pressure | Private rented **F–G** (below E) or watchlist D/E | Exemptions / future PRS standards |
+| Great British Insulation Scheme | Reported as **closed** (31 Mar 2026) | — |
+
+Greenwich-specific note: the borough is in the **GLA Warm Homes: Local Grant consortium** for private low-income homes, and also has Warm Homes: Social Housing Fund activity for council/HA stock.
+
+Caveat: the EPC register cannot prove household income, benefits, or whether a local funding queue is open. Treat outputs as lead lists for verification.
+
+```bash
+npm run retrofit -- SE18 3EU --text
+npm run retrofit -- SE18 3EU --min-priority high --only-matches --text
+```
+
 ## Checker commands
 
 ```bash
@@ -131,6 +153,9 @@ npm run check -- SE18 3EU --limit 10 --full
 # Address-level view (newest cert per dwelling; optional hydrate)
 npm run lookup -- SE18 3EU --text
 npm run lookup -- SE18 3EU --address "76 Genesta" --text
+
+# Retrofit + scheme screening
+npm run retrofit -- SE18 3EU --text
 ```
 
 Environment:

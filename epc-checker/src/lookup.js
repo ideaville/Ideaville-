@@ -6,6 +6,7 @@ import {
   loadImprovementCodeMaps,
   summarizeCertificate,
 } from "./address.js";
+import { fetchAllForPostcode } from "./search.js";
 
 function parseArgs(argv) {
   const args = {
@@ -56,29 +57,6 @@ function parseArgs(argv) {
     throw new Error(`Invalid --page-size: ${args.pageSize}`);
   }
   return args;
-}
-
-async function fetchAllForPostcode(client, postcode, pageSize) {
-  const rows = [];
-  let currentPage = 1;
-  let totalPages = 1;
-  let pagination = null;
-
-  while (currentPage <= totalPages) {
-    const search = await client.searchDomestic({
-      postcode,
-      page_size: pageSize,
-      current_page: currentPage,
-    });
-    const pageRows = Array.isArray(search.data) ? search.data : [];
-    rows.push(...pageRows);
-    pagination = search.pagination ?? pagination;
-    totalPages = search.pagination?.totalPages ?? 1;
-    if (!pageRows.length) break;
-    currentPage += 1;
-  }
-
-  return { rows, pagination };
 }
 
 function renderText(result) {
