@@ -1,8 +1,12 @@
 import {
   addMessage,
   addStatusNote,
+  buyTokens,
   confirmSession,
   createInitialState,
+  giftDraft,
+  giftOptions,
+  giveTokens,
   markSessionDone,
   outcomeDraft,
   parseRoute,
@@ -13,7 +17,7 @@ import {
 } from '/src/model.js';
 import { renderTabs, renderView } from './render.js';
 
-const STORAGE_KEY = 'give-mentor-sample-v1';
+const STORAGE_KEY = 'give-mentor-sample-v2';
 
 let state = loadState();
 let ui = freshUi();
@@ -33,6 +37,8 @@ function freshUi() {
     threadTab: 'conversation',
     composer: '',
     noteMode: false,
+    buy: { packId: 'regular' },
+    give: null,
   };
 }
 
@@ -41,7 +47,7 @@ function loadState() {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return createInitialState();
     const parsed = JSON.parse(raw);
-    if (parsed.version !== 1 || !parsed.requests || !parsed.packages) return createInitialState();
+    if (parsed.version !== 2 || !parsed.requests || !parsed.wallet) return createInitialState();
     return parsed;
   } catch {
     return createInitialState();
@@ -57,6 +63,8 @@ function captureFields() {
   if (note && ui.schedule) ui.schedule.note = note.value;
   const words = document.querySelector('[data-field="words"]');
   if (words && ui.outcome) ui.outcome.words = words.value;
+  const giftNote = document.querySelector('[data-field="gift-note"]');
+  if (giftNote && ui.give) ui.give.note = giftNote.value;
   const composer = document.querySelector('[data-field="composer"]');
   if (composer) ui.composer = composer.value;
 }
@@ -67,6 +75,12 @@ function syncDrafts(route) {
   }
   if (route.name === 'outcome' && (!ui.outcome || ui.outcome.sessionId !== route.id)) {
     ui.outcome = outcomeDraft(state, route.id);
+  }
+  if (route.name === 'give') {
+    const key = `${route.targetType || 'mentee'}:${route.id || ''}`;
+    if (!ui.give || ui.give.routeKey !== key) {
+      ui.give = { ...giftDraft(state, route), routeKey: key };
+    }
   }
   if (route.name === 'thread' && ui.threadPerson !== route.id) {
     ui.threadPerson = route.id;
@@ -87,6 +101,9 @@ const TITLES = {
   profile: 'Profile',
   thread: 'Support package',
   outcome: 'Session outcome',
+  wallet: 'Token wallet',
+  buy: 'Buy tokens',
+  give: 'Give tokens',
 };
 
 function render() {
@@ -268,6 +285,59 @@ function onClick(event) {
     showToast(result.closed
       ? 'Package marked done · sample only'
       : 'Session saved · package stays open until every goal is done');
+    return;
+  }
+  if (action === 'pick-pack') {
+    ui.buy = { packId: el.dataset.pack };
+    render();
+    return;
+  }
+  if (action === 'buy-tokens') {
+    const fields = ['card-name', 'card-number', 'card-expiry', 'card-cvc'];
+    const missing = fields.some((name) => !document.querySelector(`[data-field="${name}"]`)?.value.trim());
+    if (missing) {
+      showToast('Add the sample card details to continue. Nothing is charged.');
+      return;
+    }
+    const packId = ui.buy?.packId || 'regular';
+    state = buyTokens(state, { packId });
+    persist();
+    navigate('#/wallet');
+    showToast('Tokens added · sample checkout, nothing was charged');
+    return;
+  }
+  if (action === 'gift-type') {
+    const draft = giftDraft(state, { targetType: el.dataset.type });
+    ui.give = { ...draft, note: ui.give?.note || '', routeKey: ui.give?.routeKey };
+    render();
+    return;
+  }
+  if (action === 'gift-target') {
+    ui.give.targetId = el.dataset.id;
+    render();
+    return;
+  }
+  if (action === 'gift-amount') {
+    ui.give.amount = Number(el.dataset.amount);
+    render();
+    return;
+  }
+  if (action === 'give-tokens') {
+    const result = giveTokens(state, {
+      targetType: ui.give.targetType,
+      targetId: ui.give.targetId,
+      amount: ui.give.amount,
+      note: ui.give.note,
+    });
+    if (!result.ok) {
+      showToast(result.error);
+      return;
+    }
+    state = result.state;
+    persist();
+    ui.give = null;
+    navigate('#/board');
+    showToast('Tokens sent · sample gift, nothing was paid out');
     return;
   }
   if (action === 'reset') {

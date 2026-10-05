@@ -2,12 +2,15 @@ import { icon } from './icons.js';
 import {
   CATEGORIES,
   CHANGE_OPTIONS,
+  GIFT_AMOUNTS,
   SAMPLE_TODAY,
   TIME_SLOTS,
+  TOKEN_PACKS,
   boardColumns,
   dayTile,
   filterRequests,
   formatHours,
+  giftOptions,
   goalPercent,
   endTime,
   goalSummary,
@@ -67,7 +70,7 @@ export function renderTabs(route) {
       ['profile', 'Profile', 'emoji', '#/profile'],
     ], 'requests');
   }
-  if (['feed', 'board', 'sessions', 'alerts', 'profile'].includes(route.name)) {
+  if (['feed', 'board', 'sessions', 'alerts', 'profile', 'wallet'].includes(route.name)) {
     const active = route.name === 'feed' ? 'home' : route.name;
     return tabRow([
       ['home', 'Home', icon('home'), '#/feed'],
@@ -139,8 +142,32 @@ function badge(item) {
   return `<span class="badge ${esc(kind)}">${prefix}${esc(label)}</span>`;
 }
 
+function giftHref(state, gift) {
+  if (gift.targetType === 'cause') return `#/wallet/give/cause/${gift.targetId}`;
+  if (gift.targetType === 'package') {
+    const pkg = state.packages.find((item) => item.id === gift.targetId);
+    return pkg ? `#/mentees/${pkg.personId}` : '#/board';
+  }
+  return `#/mentees/${gift.targetId}`;
+}
+
+function walletCard(state) {
+  return `<article class="card wallet-card">
+    <button class="card-main" type="button" data-action="go" data-href="#/wallet">
+      <p class="field-label">Token balance</p>
+      <p class="wallet-balance">${state.wallet.balance}</p>
+      <p class="muted">Ready to give · sample wallet</p>
+    </button>
+    <div class="card-foot">
+      <button class="btn btn-sm" type="button" data-action="go" data-href="#/wallet/buy">Buy tokens</button>
+      <button class="btn btn-sm btn-ghost" type="button" data-action="go" data-href="#/wallet/give">Give tokens</button>
+    </div>
+  </article>`;
+}
+
 function activityRow(item, flat = false) {
-  return `<button class="activity${flat ? ' flat' : ''}" type="button" data-action="go" data-href="#/mentees/${esc(item.menteeId || item.personId)}">
+  const href = item.href || `#/mentees/${item.menteeId || item.personId}`;
+  return `<button class="activity${flat ? ' flat' : ''}" type="button" data-action="go" data-href="${esc(href)}">
     ${avatar(item.initials, item.tone, 'sm')}
     <span class="activity-copy">
       <strong>${esc(item.title)}</strong>
@@ -153,6 +180,9 @@ function activityRow(item, flat = false) {
 export function renderView(state, ui, route) {
   switch (route.name) {
     case 'detail': return renderDetail(state, route.id);
+    case 'wallet': return renderWallet(state);
+    case 'buy': return renderBuy(state, ui);
+    case 'give': return renderGive(state, ui);
     case 'schedule': return renderSchedule(state, ui);
     case 'feed': return renderFeed(state);
     case 'board': return renderBoard(state, ui);
@@ -177,7 +207,10 @@ function renderRequests(state, ui) {
         <p class="greet">${esc(state.viewer.greeting)},</p>
         <h1>${esc(state.viewer.firstName)}</h1>
       </div>
-      <button class="avatar me" type="button" data-action="go" data-href="#/profile" aria-label="Profile">${esc(state.viewer.initials)}</button>
+      <div class="feed-head-side">
+        <button class="token-pill" type="button" data-action="go" data-href="#/wallet" aria-label="Token wallet">${state.wallet.balance} tokens</button>
+        <button class="avatar me" type="button" data-action="go" data-href="#/profile" aria-label="Profile">${esc(state.viewer.initials)}</button>
+      </div>
     </div>
     <button class="hero" type="button" data-action="go" data-href="#/feed" aria-label="Open your giving">
       <div class="hero-top">
@@ -236,6 +269,7 @@ function renderDetail(state, id) {
     </article>
     <div style="margin-top:16px">
       <button class="btn btn-block" type="button" data-action="go" data-href="#/requests/${esc(req.id)}/schedule">Give ${req.duration} minutes</button>
+      <button class="btn btn-light btn-block" style="margin-top:8px" type="button" data-action="go" data-href="#/wallet/give/mentee/${esc(req.personId)}">Give tokens</button>
       <button class="btn-line" type="button" data-action="suggest" data-id="${esc(req.id)}">Not a fit? Suggest another mentor</button>
     </div>
   </div>`;
@@ -313,6 +347,7 @@ function renderFeed(state) {
       ${bar(goalPercent(feed.hours, feed.goal))}
       <p class="hero-note">${goalPercent(feed.hours, feed.goal)}% of your ${feed.goal}-hour goal · on track for December</p>
     </section>
+    ${walletCard(state)}
     <div class="section-row">
       <h2>Upcoming sessions</h2>
       <button class="linkish" type="button" data-action="go" data-href="#/sessions">See all</button>
@@ -341,11 +376,13 @@ function renderBoard(state, ui) {
       foot = `${bar(pct, true)}<div class="next">Session ${pkg.sessionNumber} of ${pkg.sessionsTotal}<br>${next}</div>`;
     }
     if (pkg.status === 'done') foot = `<div class="ok">✓ ${pkg.sessionsDone} session${pkg.sessionsDone === 1 ? '' : 's'}</div>`;
+    const tokens = pkg.tokensGiven ? `<div class="tok">${pkg.tokensGiven} tokens</div>` : '';
     return `<button class="board-card" type="button" data-action="go" data-href="#/mentees/${esc(pkg.personId)}">
       ${avatar(pkg.initials, pkg.tone, 'sm')}
       <h3>${esc(title)}</h3>
       <p>${esc(detail)}</p>
       ${foot}
+      ${tokens}
     </button>`;
   };
   const column = (key, label, count, items) => `<section class="column">
@@ -356,7 +393,7 @@ function renderBoard(state, ui) {
     <div class="page-head">
       <div>
         <h1>Monitor board</h1>
-        <p class="sub">${state.packages.length} support packages · October</p>
+        <p class="sub">${state.packages.length} support packages · ${state.wallet.spent} tokens given</p>
       </div>
       ${samplePill()}
     </div>
@@ -371,6 +408,34 @@ function renderBoard(state, ui) {
       ${column('open', 'Open', `${columns.open.length} waiting`, columns.open)}
       ${column('progress', 'In progress', `${columns.progress.length} active`, columns.progress)}
       ${column('done', 'Done', `${columns.done.length} this month`, columns.done)}
+    </div>
+    <div class="section-row">
+      <h2>Token gifts</h2>
+      <button class="linkish" type="button" data-action="go" data-href="#/wallet/give">Give</button>
+    </div>
+    <div class="panel">
+      ${state.gifts.map((gift) => `<button class="activity flat" type="button" data-action="go" data-href="${esc(giftHref(state, gift))}">
+        <span class="avatar sm tone-sand">✦</span>
+        <span class="activity-copy">
+          <strong>${esc(gift.name)}</strong>
+          <em>${esc(gift.targetType)} · ${esc(gift.when)}${gift.note ? ` · ${esc(gift.note)}` : ''}</em>
+        </span>
+        <span class="badge tokens">${gift.amount} tokens</span>
+      </button>`).join('')}
+    </div>
+    <h2 class="section-label">Causes</h2>
+    <div class="stack">
+      ${state.causes.map((cause) => `<article class="card">
+        <div class="person">
+          ${avatar(cause.initials, cause.tone, 'sm')}
+          <div>
+            <h3>${esc(cause.name)}</h3>
+            <p>${esc(cause.detail)}</p>
+          </div>
+          <span class="badge tokens">${cause.tokens}</span>
+        </div>
+        <button class="btn btn-sm" style="margin-top:12px" type="button" data-action="go" data-href="#/wallet/give/cause/${esc(cause.id)}">Give tokens</button>
+      </article>`).join('')}
     </div>
   </div>`;
 }
@@ -405,6 +470,113 @@ function renderAlerts(state) {
   </div>`;
 }
 
+function renderWallet(state) {
+  return `<div class="view">
+    ${header({ title: 'Token wallet', subtitle: 'Buy with a sample checkout, then give them away', right: samplePill() })}
+    <article class="card">
+      <p class="field-label">Balance</p>
+      <p class="wallet-balance">${state.wallet.balance}</p>
+      <p class="muted">tokens</p>
+      <div class="stat-grid">
+        <div class="stat-box"><b>${state.wallet.purchased}</b><span>bought</span></div>
+        <div class="stat-box"><b>${state.wallet.spent}</b><span>given</span></div>
+        <div class="stat-box"><b>£1</b><span>per token</span></div>
+      </div>
+    </article>
+    <div class="stack" style="margin-top:12px">
+      <button class="btn btn-block" type="button" data-action="go" data-href="#/wallet/buy">Buy tokens</button>
+      <button class="btn btn-light btn-block" type="button" data-action="go" data-href="#/wallet/give">Give tokens</button>
+    </div>
+    <p class="fine">The sample rate is £1 for 1 token. Checkout is illustrative. Card details stay on this page and no payment is taken.</p>
+    <h2 class="section-label">Recent gifts</h2>
+    <div class="panel">
+      ${state.gifts.map((gift) => `<div class="activity flat">
+        <span class="avatar sm tone-sand">✦</span>
+        <span class="activity-copy"><strong>${esc(gift.name)}</strong><em>${gift.amount} tokens · ${esc(gift.when)}</em></span>
+        <span class="badge tokens">${esc(gift.targetType)}</span>
+      </div>`).join('')}
+    </div>
+    ${state.purchases.length ? `<h2 class="section-label">Sample checkouts</h2><div class="panel">${state.purchases.map((purchase) => `<div class="activity flat"><span class="activity-copy"><strong>+${purchase.tokens} tokens</strong><em>£${purchase.price} shown · ${esc(purchase.label)}</em></span></div>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderBuy(state, ui) {
+  const pack = TOKEN_PACKS.find((item) => item.id === ui.buy?.packId) || TOKEN_PACKS[1];
+  return `<div class="view">
+    ${header({ title: 'Buy tokens', subtitle: `${state.wallet.balance} in your wallet`, align: 'left' })}
+    <div class="stack">
+      ${TOKEN_PACKS.map((item) => `<button class="pack${item.id === pack.id ? ' on' : ''}" type="button" data-action="pick-pack" data-pack="${item.id}">
+        <b>${item.tokens} tokens · £${item.price}</b>
+        <span>${esc(item.name)} · ${esc(item.note)}</span>
+      </button>`).join('')}
+    </div>
+    <article class="card" style="margin-top:16px">
+      <div class="between">
+        <p class="field-label" style="margin:0">Sample checkout</p>
+        ${samplePill()}
+      </div>
+      <p class="fine" style="margin-top:8px">Illustrative card form. These details are not saved or sent, and nothing is charged.</p>
+      <label class="field-label" for="card-name">Name on card</label>
+      <input id="card-name" data-field="card-name" autocomplete="off" value="Femi Adeyemi" />
+      <label class="field-label" for="card-number">Card number</label>
+      <input id="card-number" data-field="card-number" inputmode="numeric" autocomplete="off" value="4242 4242 4242 4242" />
+      <div class="split">
+        <div>
+          <label class="field-label" for="card-expiry">Expiry</label>
+          <input id="card-expiry" data-field="card-expiry" autocomplete="off" value="12/28" />
+        </div>
+        <div>
+          <label class="field-label" for="card-cvc">CVC</label>
+          <input id="card-cvc" data-field="card-cvc" inputmode="numeric" autocomplete="off" value="123" />
+        </div>
+      </div>
+    </article>
+    <button class="btn btn-block" style="margin-top:16px" type="button" data-action="buy-tokens">Add ${pack.tokens} tokens · sample</button>
+    <p class="footnote">£${pack.price} is shown only. No payment is taken.</p>
+  </div>`;
+}
+
+function renderGive(state, ui) {
+  const draft = ui.give;
+  if (!draft) {
+    return `<div class="view">${header({ title: 'Give tokens', align: 'left' })}<div class="card"><p class="prose">Open the wallet to choose a recipient.</p></div></div>`;
+  }
+  const options = giftOptions(state, draft.targetType);
+  const selected = options.find((option) => option.id === draft.targetId) || options[0];
+  const short = draft.targetType === 'mentee' ? 'Mentee' : draft.targetType === 'package' ? 'Package' : 'Cause';
+  return `<div class="view">
+    ${header({ title: 'Give tokens', subtitle: `${state.wallet.balance} tokens available`, align: 'left' })}
+    <div class="segment thirds">
+      ${['mentee', 'package', 'cause'].map((type) => `<button class="${draft.targetType === type ? 'on' : ''}" type="button" data-action="gift-type" data-type="${type}">${type === 'mentee' ? 'Mentee' : type === 'package' ? 'Package' : 'Cause'}</button>`).join('')}
+    </div>
+    <div class="stack">
+      ${options.map((option) => `<button class="target${option.id === draft.targetId ? ' on' : ''}" type="button" data-action="gift-target" data-id="${esc(option.id)}">
+        ${avatar(option.initials, option.tone, 'sm')}
+        <span><strong>${esc(option.name)}</strong><span class="muted">${esc(option.meta)}</span></span>
+        <span class="badge tokens">${option.tokens}</span>
+      </button>`).join('')}
+    </div>
+    <h2 class="section-label">How many</h2>
+    <div class="lengths">
+      ${GIFT_AMOUNTS.map((amount) => `<button class="${amount === draft.amount ? 'on' : ''}" type="button" data-action="gift-amount" data-amount="${amount}">${amount}</button>`).join('')}
+    </div>
+    <article class="card" style="margin-top:14px">
+      <p class="field-label">Note (optional)</p>
+      <textarea data-field="gift-note" rows="2">${esc(draft.note)}</textarea>
+    </article>
+    <div class="summary">
+      ${selected ? avatar(selected.initials, selected.tone, 'sm') : ''}
+      <div>
+        <p>${draft.amount} tokens to ${esc(selected?.name || 'someone')}</p>
+        <span>${short} · leaves ${Math.max(0, state.wallet.balance - draft.amount)} in the wallet</span>
+      </div>
+      <span class="plus">${draft.amount}</span>
+    </div>
+    <button class="btn btn-block" style="margin-top:16px" type="button" data-action="give-tokens" ${state.wallet.balance < draft.amount ? 'disabled' : ''}>Send ${draft.amount} tokens</button>
+    ${state.wallet.balance < draft.amount ? '<button class="btn-line" type="button" data-action="go" data-href="#/wallet/buy">Not enough tokens. Buy more</button>' : '<p class="footnote">Sample gift. Nothing is paid out to a bank.</p>'}
+  </div>`;
+}
+
 function renderProfile(state) {
   const saved = state.requests.filter((req) => state.saved.includes(req.id));
   return `<div class="view">
@@ -419,6 +591,10 @@ function renderProfile(state) {
       <span class="avatar lg tone-orange">${esc(state.viewer.initials)}</span>
       <h2>${esc(state.viewer.name)}</h2>
       <p class="muted">Sample giver · no sign-in in this slice</p>
+      <button class="token-stat" type="button" data-action="go" data-href="#/wallet">
+        <b>${state.wallet.balance}</b>
+        <span>token balance</span>
+      </button>
       <div class="stat-grid">
         <div class="stat-box"><b>${esc(formatHours(state.feed.hours))}</b><span>hours</span></div>
         <div class="stat-box"><b>${state.feed.people}</b><span>people</span></div>
@@ -426,13 +602,15 @@ function renderProfile(state) {
       </div>
     </article>
     <div class="menu">
+      <button type="button" data-action="go" data-href="#/wallet/buy">Buy tokens <span>›</span></button>
+      <button type="button" data-action="go" data-href="#/wallet/give">Give tokens <span>›</span></button>
       <button type="button" data-action="go" data-href="#/requests">Mentees looking for you <span>›</span></button>
       <button type="button" data-action="go" data-href="#/feed">Your giving <span>›</span></button>
       <button type="button" data-action="go" data-href="#/board">Monitor board <span>›</span></button>
     </div>
     ${saved.length ? `<h2 class="section-label">Saved</h2><div class="stack">${saved.map(requestCard).join('')}</div>` : ''}
     <button class="btn btn-light btn-block" style="margin-top:16px" type="button" data-action="reset">Reset sample data</button>
-    <p class="fine">Hours, messages, and bookings stay in this browser tab until you reset them. There is no payment, calendar, or messaging provider.</p>
+    <p class="fine">Hours, tokens, messages, and bookings stay in this browser tab until you reset them. Checkout is a sample. There is no payment, calendar, or messaging provider.</p>
   </div>`;
 }
 
@@ -478,7 +656,10 @@ function renderThread(state, ui, personId) {
         <strong>${pkg.status === 'done' ? `${pkg.sessionsDone} of ${pkg.sessionsTotal}` : `Session ${pkg.sessionNumber || pkg.sessionsDone} of ${pkg.sessionsTotal}`}</strong>
         <span>${pkg.nextDate ? `Next · ${esc(shortDate(pkg.nextDate))}, ${esc(pkg.nextTime)}` : 'No upcoming session'}</span>
       </div>
-      ${outcomeHref ? `<button class="btn-line" type="button" data-action="go" data-href="${outcomeHref}">Log session outcome</button>` : ''}
+      <div class="pkg-links">
+        ${outcomeHref ? `<button class="btn-line" type="button" data-action="go" data-href="${outcomeHref}">Log session outcome</button>` : ''}
+        <button class="btn-line" type="button" data-action="go" data-href="#/wallet/give/${pkg ? `package/${esc(pkg.id)}` : `mentee/${esc(personId)}`}">Give tokens${pkg?.tokensGiven ? ` · ${pkg.tokensGiven} sent` : ''}</button>
+      </div>
     </article>` : ''}
     <div class="segment" style="margin-top:14px">
       <button class="${ui.threadTab === 'conversation' ? 'on' : ''}" type="button" data-action="thread-tab" data-tab="conversation">Conversation</button>

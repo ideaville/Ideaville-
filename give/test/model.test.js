@@ -4,10 +4,12 @@ import {
   addMessage,
   addStatusNote,
   boardColumns,
+  buyTokens,
   confirmSession,
   createInitialState,
   endTime,
   filterRequests,
+  giveTokens,
   goalPercent,
   markSessionDone,
   parseRoute,
@@ -199,4 +201,56 @@ test('routes cover the prototype screens', () => {
   assert.equal(parseRoute('#/board').name, 'board');
   assert.equal(parseRoute('#/mentees/amara').name, 'thread');
   assert.deepEqual(parseRoute('#/sessions/amara-oct6/outcome'), { name: 'outcome', id: 'amara-oct6' });
+  assert.equal(parseRoute('#/wallet').name, 'wallet');
+  assert.equal(parseRoute('#/wallet/buy').name, 'buy');
+  assert.deepEqual(parseRoute('#/wallet/give/cause/first-role'), {
+    name: 'give',
+    targetType: 'cause',
+    id: 'first-role',
+  });
+});
+
+test('sample wallet reconciles bought, given, and balance', () => {
+  const state = createInitialState();
+  assert.equal(state.wallet.balance, 180);
+  assert.equal(state.wallet.purchased - state.wallet.spent, 180);
+  assert.equal(state.packages.find((pkg) => pkg.id === 'pkg-amara').tokensGiven, 40);
+  assert.equal(state.causes.find((cause) => cause.id === 'learning').tokens, 15);
+  const given = state.gifts.reduce((sum, gift) => sum + gift.amount, 0);
+  assert.equal(given, state.wallet.spent);
+});
+
+test('buying tokens is a sample balance change and does not record card details', () => {
+  const state = createInitialState();
+  const next = buyTokens(state, { packId: 'regular' });
+  assert.equal(next.wallet.balance, 230);
+  assert.equal(next.purchases[0].sample, true);
+  assert.equal(next.purchases[0].price, 50);
+  assert.equal(JSON.stringify(next).includes('4242'), false);
+  assert.equal(state.wallet.balance, 180);
+});
+
+test('tokens can be given to a mentee, a package, or a cause', () => {
+  const state = createInitialState();
+  const toMentee = giveTokens(state, { targetType: 'mentee', targetId: 'amara', amount: 25, note: 'For the train' });
+  assert.equal(toMentee.ok, true);
+  assert.equal(toMentee.state.wallet.balance, 155);
+  assert.equal(toMentee.state.packages.find((pkg) => pkg.id === 'pkg-amara').tokensGiven, 65);
+  assert.match(toMentee.state.threads.amara.at(-1).text, /25 tokens/);
+
+  const toPackage = giveTokens(state, { targetType: 'package', targetId: 'pkg-tunde', amount: 10 });
+  assert.equal(toPackage.state.packages.find((pkg) => pkg.id === 'pkg-tunde').tokensGiven, 10);
+
+  const toCause = giveTokens(state, { targetType: 'cause', targetId: 'founder', amount: 40, note: 'Pitch day' });
+  assert.equal(toCause.state.causes.find((cause) => cause.id === 'founder').tokens, 40);
+  assert.equal(toCause.state.gifts[0].targetType, 'cause');
+});
+
+test('giving more tokens than the balance does not change the wallet', () => {
+  const state = createInitialState();
+  const result = giveTokens(state, { targetType: 'cause', targetId: 'founder', amount: 1000 });
+  assert.equal(result.ok, false);
+  assert.equal(result.state, state);
+  assert.equal(state.wallet.balance, 180);
+  assert.equal(giveTokens(state, { targetType: 'mentee', targetId: 'missing', amount: 10 }).ok, false);
 });

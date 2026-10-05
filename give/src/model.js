@@ -14,6 +14,14 @@ export const CHANGE_OPTIONS = [
 
 export const SESSION_LENGTHS = [15, 30, 45, 60];
 
+export const TOKEN_PACKS = [
+  { id: 'starter', tokens: 25, price: 25, name: 'Starter', note: 'Enough for one small gift' },
+  { id: 'regular', tokens: 50, price: 50, name: 'Regular', note: 'A typical month of giving' },
+  { id: 'plus', tokens: 120, price: 100, name: 'Plus', note: '20 extra tokens at the sample rate' },
+];
+
+export const GIFT_AMOUNTS = [10, 25, 40, 100];
+
 export const TIME_SLOTS = ['08:00', '09:30', '12:00', '18:00', '19:30', '21:00'];
 
 const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -217,6 +225,11 @@ export function parseRoute(hash) {
   if (a === 'alerts') return { name: 'alerts' };
   if (a === 'profile') return { name: 'profile' };
   if (a === 'mentees' && b) return { name: 'thread', id: b };
+  if (a === 'wallet' && b === 'buy') return { name: 'buy' };
+  if (a === 'wallet' && b === 'give') {
+    return { name: 'give', targetType: c || 'mentee', id: parts[3] || '' };
+  }
+  if (a === 'wallet') return { name: 'wallet' };
   return { name: 'requests' };
 }
 
@@ -308,6 +321,7 @@ export function confirmSession(state, input) {
         nextStepOwner: req.firstName,
         nextStepDue: 'Fri 16 Oct',
         followUpWhen: 'Thu 15 Oct · 18:00 · 30 min',
+        tokensGiven: 0,
       };
       next.packages.unshift(pkg);
       next.feed.activePackages += 1;
@@ -926,8 +940,15 @@ function buildState() {
     },
   ];
 
+  const tokenSeed = {
+    'pkg-amara': 40,
+    'pkg-james': 25,
+    'pkg-sade': 60,
+  };
+  for (const pkg of packages) pkg.tokensGiven = tokenSeed[pkg.id] || 0;
+
   return {
-    version: 1,
+    version: 2,
     viewer: {
       name: 'Femi Adeyemi',
       firstName: 'Femi',
@@ -951,6 +972,48 @@ function buildState() {
       people: 6,
       activePackages: 4,
     },
+    wallet: {
+      balance: 180,
+      purchased: 350,
+      spent: 170,
+    },
+    causes: [
+      {
+        id: 'first-role',
+        name: 'First-role application fund',
+        detail: 'Application fees, data, and travel for final-year candidates.',
+        place: 'Lagos & London',
+        tokens: 30,
+        initials: 'FF',
+        tone: 'peach',
+      },
+      {
+        id: 'founder',
+        name: 'Founder pitch stipend',
+        detail: 'Travel and a day of prep before first investor meetings.',
+        place: 'Accra & Nairobi',
+        tokens: 0,
+        initials: 'PS',
+        tone: 'blue',
+      },
+      {
+        id: 'learning',
+        name: 'Community learning pot',
+        detail: 'Shared materials for open study groups.',
+        place: 'All cities',
+        tokens: 15,
+        initials: 'CL',
+        tone: 'mint',
+      },
+    ],
+    gifts: [
+      { id: 'gift-amara', targetType: 'mentee', targetId: 'amara', name: 'Amara Okafor', amount: 40, note: 'For the two applications she is about to send.', when: '2 days ago' },
+      { id: 'gift-james', targetType: 'package', targetId: 'pkg-james', name: 'Investor readiness', amount: 25, note: '', when: '3 days ago' },
+      { id: 'gift-sade', targetType: 'package', targetId: 'pkg-sade', name: 'First 90 days', amount: 60, note: 'Closing gift.', when: '1 day ago' },
+      { id: 'gift-fund', targetType: 'cause', targetId: 'first-role', name: 'First-role application fund', amount: 30, note: '', when: '4 days ago' },
+      { id: 'gift-learn', targetType: 'cause', targetId: 'learning', name: 'Community learning pot', amount: 15, note: '', when: 'Last week' },
+    ],
+    purchases: [],
     requests,
     packages,
     sessions: [
@@ -1117,6 +1180,16 @@ function buildState() {
     },
     activity: [
       {
+        id: 'act-tokens-amara',
+        personId: 'amara',
+        initials: 'AO',
+        tone: 'peach',
+        title: 'You sent 40 tokens to Amara',
+        detail: 'Token gift · Career · 2 days ago',
+        badge: { kind: 'tokens', label: '40 tokens' },
+        menteeId: 'amara',
+      },
+      {
         id: 'act-sade',
         personId: 'sade',
         initials: 'SB',
@@ -1151,6 +1224,158 @@ function buildState() {
     outcomes: {},
     nextId: 100,
   };
+}
+
+export function giftOptions(state, targetType) {
+  if (targetType === 'cause') {
+    return state.causes.map((cause) => ({
+      id: cause.id,
+      name: cause.name,
+      meta: cause.place,
+      initials: cause.initials,
+      tone: cause.tone,
+      tokens: cause.tokens,
+    }));
+  }
+  if (targetType === 'package') {
+    return state.packages.map((pkg) => ({
+      id: pkg.id,
+      name: pkg.packageName,
+      meta: pkg.name,
+      initials: pkg.initials,
+      tone: pkg.tone,
+      tokens: pkg.tokensGiven || 0,
+    }));
+  }
+  return state.requests.map((req) => ({
+    id: req.personId,
+    name: req.name,
+    meta: req.listMeta,
+    initials: req.initials,
+    tone: req.tone,
+    tokens: state.packages.find((pkg) => pkg.personId === req.personId)?.tokensGiven || 0,
+  }));
+}
+
+export function giftDraft(state, { targetType = 'mentee', id = '' } = {}) {
+  const type = ['mentee', 'package', 'cause'].includes(targetType) ? targetType : 'mentee';
+  const options = giftOptions(state, type);
+  const match = options.find((option) => option.id === id);
+  return {
+    targetType: type,
+    targetId: match?.id || options[0]?.id || '',
+    amount: 25,
+    note: '',
+  };
+}
+
+export function buyTokens(state, { packId } = {}) {
+  const pack = TOKEN_PACKS.find((item) => item.id === packId);
+  if (!pack) throw new Error('Unknown token pack');
+  const next = structuredClone(state);
+  next.wallet.balance += pack.tokens;
+  next.wallet.purchased += pack.tokens;
+  next.nextId += 1;
+  next.purchases.unshift({
+    id: `buy-${next.nextId}`,
+    packId: pack.id,
+    tokens: pack.tokens,
+    price: pack.price,
+    sample: true,
+    label: 'Sample checkout · no charge',
+  });
+  activityItem(next, {
+    personId: 'femi',
+    initials: 'FA',
+    tone: 'orange',
+    title: `You bought ${pack.tokens} tokens`,
+    detail: `Sample checkout · £${pack.price} shown · not charged`,
+    badge: { kind: 'tokens', label: `+${pack.tokens}` },
+    href: '#/wallet',
+  });
+  return next;
+}
+
+export function giveTokens(state, { targetType, targetId, amount, note } = {}) {
+  const qty = Number(amount);
+  if (!Number.isInteger(qty) || qty <= 0) {
+    return { ok: false, error: 'Choose how many tokens to give.', state };
+  }
+  if (state.wallet.balance < qty) {
+    return { ok: false, error: 'Not enough tokens. Buy more in the sample wallet.', state };
+  }
+
+  const next = structuredClone(state);
+  let name = '';
+  let initials = '•';
+  let tone = 'sand';
+  let href = '#/board';
+  let personId = '';
+
+  if (targetType === 'mentee') {
+    const req = next.requests.find((item) => item.personId === targetId || item.id === targetId);
+    if (!req) return { ok: false, error: 'Choose a mentee.', state };
+    const pkg = next.packages.find((item) => item.personId === req.personId);
+    if (pkg) pkg.tokensGiven = (pkg.tokensGiven || 0) + qty;
+    name = req.name;
+    initials = req.initials;
+    tone = req.tone;
+    personId = req.personId;
+    href = `#/mentees/${req.personId}`;
+  } else if (targetType === 'package') {
+    const pkg = next.packages.find((item) => item.id === targetId);
+    if (!pkg) return { ok: false, error: 'Choose a support package.', state };
+    pkg.tokensGiven = (pkg.tokensGiven || 0) + qty;
+    name = pkg.packageName;
+    initials = pkg.initials;
+    tone = pkg.tone;
+    personId = pkg.personId;
+    href = `#/mentees/${pkg.personId}`;
+  } else if (targetType === 'cause') {
+    const cause = next.causes.find((item) => item.id === targetId);
+    if (!cause) return { ok: false, error: 'Choose a cause.', state };
+    cause.tokens += qty;
+    name = cause.name;
+    initials = cause.initials;
+    tone = cause.tone;
+    href = '#/board';
+  } else {
+    return { ok: false, error: 'Choose a mentee, package, or cause.', state };
+  }
+
+  next.wallet.balance -= qty;
+  next.wallet.spent += qty;
+  next.nextId += 1;
+  const giftNote = (note || '').trim();
+  next.gifts.unshift({
+    id: `gift-${next.nextId}`,
+    targetType,
+    targetId,
+    name,
+    amount: qty,
+    note: giftNote,
+    when: 'Just now',
+  });
+  activityItem(next, {
+    personId,
+    initials,
+    tone,
+    title: `You sent ${qty} tokens to ${name}`,
+    detail: `${targetType === 'cause' ? 'Cause' : 'Token gift'} · Just now`,
+    badge: { kind: 'tokens', label: `${qty} tokens` },
+    href,
+    menteeId: personId || undefined,
+  });
+  if (personId) {
+    pushEntry(next, personId, {
+      type: 'status',
+      author: 'FEMI',
+      text: giftNote ? `Sent ${qty} tokens. ${giftNote}` : `Sent ${qty} tokens.`,
+      time: 'Now',
+      day: 'Today',
+    });
+  }
+  return { ok: true, state: next };
 }
 
 export function createInitialState() {

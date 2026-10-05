@@ -1,8 +1,8 @@
 # Give
 
-Mobile-first sample of a giving and mentoring home: browse requests, book a session, see hours given, monitor support packages, keep a mentee thread, and log a session outcome.
+Mobile-first sample of a giving and mentoring home. Givers give time and tokens. Tokens are bought in a sample checkout, then given to a mentee, a support package, or a cause.
 
-This repo did not have a web app. The slice stays on the existing Node style: no framework and no extra dependencies. Illustrative data only — nothing is paid, sent, or signed in.
+This repo did not have a web app. The slice stays on the existing Node style: no framework and no extra dependencies. Illustrative data only — checkout does not charge a card, and nothing is paid, sent, or signed in.
 
 ## Run
 
@@ -26,10 +26,13 @@ The sample clock is Monday 5 October 2026, matching the screens. Edits stay in t
 | `#/requests` | Mentees looking for you, with filters and Give time |
 | `#/requests/amara` | Request, goals, and preferences |
 | `#/requests/amara/schedule` | Pick a day, time, and length, then confirm |
-| `#/feed` | Your giving: hours, upcoming sessions, activity |
-| `#/board` | Open / In progress / Done, by person or package |
-| `#/mentees/amara` | Conversation and status notes |
+| `#/feed` | Your giving: hours, token balance, upcoming sessions, activity |
+| `#/wallet` | Token balance, buy, and gifts |
+| `#/wallet/buy` | Sample checkout for a token pack. No charge is made |
+| `#/wallet/give` | Give tokens to a mentee, package, or cause |
+| `#/board` | Open / In progress / Done, plus token gifts on each card |
+| `#/mentees/amara` | Conversation, status notes, and token gifts |
 | `#/sessions/amara-oct6/outcome` | After-session outcome, then mark done |
-| `#/alerts`, `#/profile` | Sample notifications and the giver profile |
+| `#/alerts`, `#/profile` | Sample notifications, token balance, and the giver profile |
 
-Tap the green hours card on the requests home to open Your giving. From a thread, **Log session outcome** opens the form. A package stays in progress until every goal is checked.
+Tap the green hours card on the requests home to open Your giving. The token pill opens the wallet. From a thread, **Log session outcome** opens the form and **Give tokens** opens the gift screen. A package stays in progress until every goal is checked.
