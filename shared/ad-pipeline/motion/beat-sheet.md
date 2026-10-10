@@ -4,7 +4,7 @@ Clock is milliseconds from the first frame. Easing for settles and the stamp is 
 
 | Time | Picture | Type | Motion |
 |---|---|---|---|
-| 0.000–2.000 | Terrace, dusk, one warm window at rest, lamp, tree, spire | Wordmark, company, Greenwich, SE18 3EU. Lower third empty | Drift only |
+| 0.000–2.000 | Terrace, dusk, one warm window at rest, lamp, tree | Wordmark, company, Greenwich, SE18 3EU. Lower third empty | Drift only |
 | 2.000–2.750 | Drift continues | Headline settles 16px up and fades in | Resolve, beat 1 |
 | 2.750–5.500 | Drift continues. Window still at rest brightness | Headline holds. Support and band absent | Hold the claim |
 | 5.500–6.020 | Hero sash brightens through 6.900 | Band D arrow stamps (10px up, scale 1.08 → 1) | Resolve, beat 2 |
@@ -18,7 +18,7 @@ Clock is milliseconds from the first frame. Easing for settles and the stamp is 
 
 Top: `IDEAVILLE` / Alpha Performance Solutions, and `GREENWICH · SE LONDON` / `SE18 3EU`.
 
-Picture: centered terrace, hero window lit, spire in the right sky.
+Picture: centered terrace, hero window lit, lamp at the right.
 
 Lower left: `Know the house.` / `Live EPC lookup. Retrofit need. Scheme fit.`
 

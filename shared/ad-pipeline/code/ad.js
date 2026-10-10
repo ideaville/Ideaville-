@@ -45,8 +45,9 @@
   function render(t) {
     current = Math.max(0, Math.min(DURATION, t));
     const drift = current / DURATION;
-    distant.style.transform = `translate3d(${(-32 * drift).toFixed(2)}px,0,0)`;
-    terrace.style.transform = `translate3d(${(-12 * drift).toFixed(2)}px,0,0)`;
+    // End frame is the drawn composition. The terrace creeps left into that mark.
+    distant.style.transform = `translate3d(${(80 * (1 - drift)).toFixed(2)}px,0,0)`;
+    terrace.style.transform = `translate3d(${(56 * (1 - drift)).toFixed(2)}px,0,0)`;
 
     const claim = easeOut(seg(current, 2000, 2750));
     headline.style.opacity = String(claim);

@@ -4,7 +4,7 @@ Four frames. The camera never cuts. Same 1920×1080 stage the whole time.
 
 ## 1. Atmosphere — 1.0s
 
-A late-October dusk over a stock-brick terrace. Sky is ink at the top and brick-dust at the eaves, not purple and not a sunset disc. Three houses, one roof, chimneys breaking the ridge. The middle house has a single sash already lit, quietly. A plane tree is cropped at the left edge. A lantern and a pale spire sit in the right-hand gap. The road is empty of type except the wordmark and the place slate. It should feel like arriving on the street, not like a title sequence warming up.
+A late-October dusk over a stock-brick terrace. Sky is ink at the top and brick-dust at the eaves, not purple and not a sunset disc. Three houses, one roof, chimneys breaking the ridge. The middle house has a single sash already lit, quietly. A pollarded plane is cropped at the left edge. A lantern stands at the right. The road is empty of type except the wordmark and the place slate. It should feel like arriving on the street, not like a title sequence warming up.
 
 ## 2. Claim — 3.4s
 

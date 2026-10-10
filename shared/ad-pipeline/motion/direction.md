@@ -39,7 +39,7 @@ Window light is the same warm family as band D, because the light is the house, 
 
 - Top left: wordmark and company. Static from frame 0.
 - Top right: place slate and postcode. Static from frame 0.
-- Picture: one terrace row, shared roof, three chimneys, one lit sash, a cropped plane tree, a street lamp, a hazy spire in the right gap.
+- Picture: one terrace row, shared roof, three chimneys, one lit sash, a pollarded plane tree cropped at the left, a street lamp at the right. No floating landmark.
 - Lower left: headline, then support.
 - Lower right: EPC D arrow, then the CTA.
 
@@ -47,7 +47,7 @@ The arrow is the certificate, drawn as one right-pointing band label. It is not 
 
 ## Three motions
 
-1. **Drift** — distant spire moves 32px left and the terrace 12px left across the whole 10s. Pavement seam, road, and type stay put.
+1. **Drift** — the terrace creeps 56px left across the 10s and lands on the drawn composition. Tree, lamp, road, and type stay put, so the street moves against them. The held end frame is not mid-glide.
 2. **Resolve** — at 2.0s the headline settles up into place. At 5.5s the band D arrow stamps in and the hero window brightens; the support line fades with that stamp. One idea, two beats: the claim, then the proof.
 3. **Lock** — at 8.5s the CTA arrives and its rule draws. Hold to 10.0.
 
