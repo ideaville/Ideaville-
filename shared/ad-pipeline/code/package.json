@@ -1,0 +1,13 @@
+{
+  "name": "ideaville-10s",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "preview": "python3 -m http.server 4173",
+    "stills": "node render.mjs --stills",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.15.0"
+  }
+}
