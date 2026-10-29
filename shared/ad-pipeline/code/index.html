@@ -9,7 +9,7 @@
 </head>
 <body>
   <div id="fit">
-    <main id="stage" role="img" aria-label="Ideaville. Know the house. Live EPC lookup for Greenwich and SE London. Check a postcode.">
+    <main id="stage" role="img" aria-label="Ideaville. Know the house. Live EPC lookup for Greenwich and SE London. Check a postcode. alphaperformancesolutions.co.uk.">
       <svg id="picture" viewBox="0 0 1920 1080" aria-hidden="true">
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -42,8 +42,8 @@
             <path d="M0 13 H70 M0 0 H70" stroke="#5c342c" stroke-width="1.4"/>
             <path d="M18 0 V13 M46 13 V26" stroke="#5c342c" stroke-width="1.4"/>
           </pattern>
-          <filter id="bloom" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="16"/>
+          <filter id="bloom" x="-140%" y="-140%" width="380%" height="380%">
+            <feGaussianBlur stdDeviation="22"/>
           </filter>
           <filter id="grain" x="0" y="0" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
@@ -58,6 +58,7 @@
         <rect width="1920" height="1080" fill="url(#sky)"/>
         <g id="distant"></g>
 
+        <g id="terrace-scale" transform="translate(960 850) scale(1.06) translate(-960 -850)">
         <g id="terrace">
           <rect x="330" y="478" width="420" height="212" fill="url(#brickA)"/>
           <rect x="750" y="478" width="420" height="212" fill="url(#brickB)"/>
@@ -107,7 +108,7 @@
             <rect x="1234" y="524" width="16" height="40" fill="#fff" opacity="0.18"/>
           </g>
           <!-- hero sash -->
-          <rect id="hero-glow" x="984" y="488" width="156" height="190" rx="10" fill="#ffb000" filter="url(#bloom)" opacity="0.35"/>
+          <rect id="hero-glow" x="984" y="488" width="156" height="190" rx="10" fill="#ffb000" filter="url(#bloom)" opacity="0.16"/>
           <g>
             <rect x="1006" y="508" width="112" height="150" fill="#f4eee4"/>
             <rect x="1014" y="516" width="96" height="62" fill="#f0b33a"/>
@@ -149,7 +150,8 @@
             <rect x="1210" y="652" width="128" height="9"/>
             <rect x="1418" y="652" width="128" height="9"/>
           </g>
-          <ellipse cx="1062" cy="872" rx="96" ry="11" fill="#ffb84a" opacity="0.3"/>
+          <ellipse cx="1062" cy="872" rx="96" ry="11" fill="#ffb84a" opacity="0.18"/>
+          </g>
         </g>
 
         <g id="foreground">
@@ -166,7 +168,7 @@
           <rect x="1760" y="500" width="24" height="48" fill="#f2c56a"/>
           <rect x="1754" y="494" width="36" height="8" fill="#1a1714"/>
           <rect x="1754" y="546" width="36" height="8" fill="#1a1714"/>
-          <ellipse cx="1772" cy="868" rx="78" ry="14" fill="#ffb84a" opacity="0.22"/>
+          <ellipse cx="1772" cy="868" rx="78" ry="14" fill="#ffb84a" opacity="0.13"/>
 
           <rect x="0" y="892" width="1920" height="6" fill="#cfc3b0"/>
           <rect x="0" y="898" width="1920" height="182" fill="#161b1d"/>
@@ -190,8 +192,8 @@
       <section class="lower">
         <h1 id="headline">Know the house.</h1>
         <p class="support" id="support">Live EPC lookup. Retrofit need. Scheme fit.</p>
-        <div class="band" id="band" aria-hidden="true"><span>D</span></div>
-        <p class="cta" id="cta"><span>Check a postcode</span><span class="rule" id="rule"></span></p>
+        <div class="band" id="band" aria-hidden="true"><span class="band-shape" id="band-shape"></span><span class="band-letter" id="band-letter">D</span></div>
+        <p class="cta" id="cta"><span class="cta-line">Check a postcode</span><span class="rule" id="rule"></span><span class="cta-url">alphaperformancesolutions.co.uk</span></p>
       </section>
     </main>
   </div>

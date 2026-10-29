@@ -45,9 +45,10 @@ try {
   await page.evaluate(async () => {
     await document.fonts.ready;
     const fraunces = document.fonts.check("560 96px Fraunces");
-    const outfit = document.fonts.check("600 22px Outfit");
-    if (!fraunces || !outfit) {
-      throw new Error(`fonts missing fraunces=${fraunces} outfit=${outfit}`);
+    const outfit = document.fonts.check("600 36px Outfit");
+    const plex = document.fonts.check("500 22px \"IBM Plex Mono\"");
+    if (!fraunces || !outfit || !plex) {
+      throw new Error(`fonts missing fraunces=${fraunces} outfit=${outfit} plex=${plex}`);
     }
   });
 
@@ -88,6 +89,17 @@ try {
       "-i", path.join(stillsDir, "03-lockup.png"),
       "-update", "1",
       path.join(exportsDir, "poster.png")
+    ]);
+    await run("ffmpeg", [
+      "-y",
+      "-i", path.join(stillsDir, "00-atmosphere.png"),
+      "-i", path.join(stillsDir, "01-headline.png"),
+      "-i", path.join(stillsDir, "02-band.png"),
+      "-i", path.join(stillsDir, "03-lockup.png"),
+      "-filter_complex",
+      "[0][1]hstack=inputs=2[top];[2][3]hstack=inputs=2[bot];[top][bot]vstack=inputs=2,scale=1280:720:flags=lanczos",
+      "-update", "1",
+      path.join(exportsDir, "contact-sheet.png")
     ]);
     console.log("wrote", mp4);
   }

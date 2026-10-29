@@ -10,6 +10,8 @@
   const headline = document.getElementById("headline");
   const support = document.getElementById("support");
   const band = document.getElementById("band");
+  const bandShape = document.getElementById("band-shape");
+  const bandLetter = document.getElementById("band-letter");
   const cta = document.getElementById("cta");
   const rule = document.getElementById("rule");
   const playBtn = document.getElementById("play");
@@ -39,33 +41,48 @@
     return 1 - Math.pow(1 - p, 3);
   }
 
+  function fade(p) {
+    if (p <= 0) return "0";
+    if (p >= 1) return "1";
+    return p.toFixed(3);
+  }
+
   let current = 0;
   let raf = 0;
 
   function render(t) {
     current = Math.max(0, Math.min(DURATION, t));
     const drift = current / DURATION;
-    // End frame is the drawn composition. The terrace creeps left into that mark.
-    distant.style.transform = `translate3d(${(80 * (1 - drift)).toFixed(2)}px,0,0)`;
-    terrace.style.transform = `translate3d(${(56 * (1 - drift)).toFixed(2)}px,0,0)`;
+    // Whole pixels only. Sub-pixel translates crawl the brick courses and shimmer type.
+    distant.style.transform = `translate(${Math.round(80 * (1 - drift))}px, 0)`;
+    terrace.style.transform = `translate(${Math.round(56 * (1 - drift))}px, 0)`;
 
     const claim = easeOut(seg(current, 2000, 2750));
-    headline.style.opacity = String(claim);
-    headline.style.transform = `translateY(${((1 - claim) * 16).toFixed(2)}px)`;
+    const claimY = Math.round((1 - claim) * 16);
+    headline.style.opacity = fade(claim);
+    headline.style.transform = claimY === 0 ? "none" : `translateY(${claimY}px)`;
 
     const proof = easeOut(seg(current, 5500, 6020));
-    band.style.opacity = String(proof);
-    band.style.transform = `translateY(${((1 - proof) * 10).toFixed(2)}px) scale(${(1.08 - proof * 0.08).toFixed(4)})`;
+    const proofY = Math.round((1 - proof) * 10);
+    const scale = proofY === 0 ? 1 : 1.08 - proof * 0.08;
+    band.style.opacity = fade(proof);
+    band.style.transform = "none";
+    bandShape.style.transform = proofY === 0 && scale === 1
+      ? "none"
+      : `translateY(${proofY}px) scale(${scale.toFixed(4)})`;
+    bandLetter.style.top = `${proofY}px`;
 
-    support.style.opacity = String(easeOut(seg(current, 5800, 6600)));
+    support.style.opacity = fade(easeOut(seg(current, 5800, 6600)));
 
     const glow = easeOut(seg(current, 5400, 6900));
-    heroGlow.style.opacity = String(0.35 + glow * 0.65);
+    heroGlow.style.opacity = (0.16 + glow * 0.42).toFixed(3);
 
     const lock = easeOut(seg(current, 8500, 9200));
-    cta.style.opacity = String(lock);
-    cta.style.transform = `translateY(${((1 - lock) * 8).toFixed(2)}px)`;
-    rule.style.transform = `scaleX(${easeOut(seg(current, 8680, 9480)).toFixed(4)})`;
+    const lockY = Math.round((1 - lock) * 8);
+    cta.style.opacity = fade(lock);
+    cta.style.transform = lockY === 0 ? "none" : `translateY(${lockY}px)`;
+    const ruleP = easeOut(seg(current, 8680, 9480));
+    rule.style.transform = ruleP >= 1 ? "scaleX(1)" : `scaleX(${ruleP.toFixed(4)})`;
 
     if (!clean) {
       scrub.value = String(Math.round(current));
