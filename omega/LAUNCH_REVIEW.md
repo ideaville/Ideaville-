@@ -65,8 +65,10 @@ Observed in this pass (Europe/London):
 
 ## Deployment evidence
 
-- **No Cursor publish / hosting enablement** performed in this pass (per instruction).
-- Prior agent preview was local-only (`vite preview` on loopback). No production URL claimed.
+- See [`STAGING_PREVIEW.md`](./STAGING_PREVIEW.md) for the private-preview investigation (6 Nov 2026).
+- Cursor `publish-app` tools were **not available** in the agent MCP session; no Vercel/Netlify credentials present.
+- No public hosting or tunnels used. No production URL claimed.
+- Local `vite preview` on loopback remains agent-only, not phone staging.
 
 ## Risk
 
