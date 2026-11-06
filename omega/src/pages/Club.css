@@ -88,6 +88,11 @@
   font-size: 0.82rem;
 }
 
+.form-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+
 .club-code {
   font-family: var(--font-display);
   letter-spacing: 0.18em;

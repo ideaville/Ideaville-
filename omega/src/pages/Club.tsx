@@ -1,83 +1,101 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { MAX_DISPLAY_NAME } from '../hooks/clubLogic'
 import { useClub } from '../hooks/useClub'
 import './Club.css'
 
 export function Club() {
   const { member, join } = useClub()
   const [name, setName] = useState('')
+  const [error, setError] = useState('')
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
-    join(name)
+    const result = join(name)
+    if (!result) {
+      setError('Enter a short demo display name (letters/numbers only, no email or phone).')
+      return
+    }
+    setError('')
   }
 
   return (
     <main className="section club-page">
       <div className="shell">
         <div className="section-head">
-          <p className="eyebrow">Executive Club</p>
-          <h2>The referral layer, without the noise.</h2>
+          <p className="eyebrow">Executive Club · Demo only</p>
+          <h2>Non-transactional referral concept.</h2>
           <p className="lede">
-            Share OMEGA with drivers you trust. Earn on verified orders. Climb when your network
-            compounds — not when you shout louder.
+            This screen explores UX for a future club. It does not create accounts, collect identity
+            documents, take payments, or pay commissions. Anything stored stays in this browser’s
+            localStorage and is not production authentication.
           </p>
         </div>
 
         <div className="club-layout">
           <ol className="club-steps">
             <li>
-              <strong>Claim your code</strong>
-              <span>Join as an Advocate and receive a personal OMG link.</span>
+              <strong>Start a local demo</strong>
+              <span>Pick a display name for this browser session only — not a signup.</span>
             </li>
             <li>
-              <strong>Refer with intent</strong>
-              <span>Share product education, not pressure. Quality referrals stick.</span>
+              <strong>Simulate referrals</strong>
+              <span>Dashboard buttons invent demo activity. No money moves.</span>
             </li>
             <li>
-              <strong>Earn &amp; ascend</strong>
-              <span>Commissions unlock residuals as you hit Partner and Executive volume.</span>
+              <strong>Commercial terms later</strong>
+              <span>Rates, residuals, and equity ideas remain unapproved and hidden from sales copy.</span>
             </li>
           </ol>
 
           <div className="club-panel">
             {member ? (
               <div className="club-joined">
-                <p className="eyebrow">Welcome back</p>
+                <p className="eyebrow">Local demo session</p>
                 <h3>{member.name}</h3>
                 <p className="club-code">{member.code}</p>
                 <p className="club-meta">
-                  Rank <span>{member.rank}</span> · {member.referrals} referrals · £
-                  {member.earnings.toFixed(2)} earned
+                  Demo rank <span>{member.rank}</span> · {member.referrals} simulated referrals ·{' '}
+                  {member.demoPoints} demo points (not currency)
                 </p>
                 <div className="club-actions">
                   <Link to="/dashboard" className="btn btn-gold">
-                    Open dashboard
+                    Open demo dashboard
                   </Link>
                   <Link to="/wealth" className="btn btn-ghost">
-                    Rank ladder
+                    Network concept
                   </Link>
                 </div>
               </div>
             ) : (
-              <form className="club-form" onSubmit={onSubmit}>
-                <p className="eyebrow">Activate membership</p>
-                <h3>Join the Executive Club</h3>
-                <label htmlFor="member-name">Preferred name</label>
+              <form className="club-form" onSubmit={onSubmit} noValidate>
+                <p className="eyebrow">Browser-local demo</p>
+                <h3>Start club simulation</h3>
+                <label htmlFor="member-name">Demo display name</label>
                 <input
                   id="member-name"
-                  name="name"
+                  name="demoDisplayName"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Alex Rivera"
-                  autoComplete="name"
+                  placeholder="e.g. Demo Driver"
+                  autoComplete="off"
+                  maxLength={MAX_DISPLAY_NAME}
                   required
+                  aria-describedby="name-help"
                 />
+                <p id="name-help" className="form-note">
+                  Max {MAX_DISPLAY_NAME} characters. Do not enter email, phone, or other personal data —
+                  this is not a secure account system.
+                </p>
+                {error ? (
+                  <p className="form-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
                 <button type="submit" className="btn btn-gold">
-                  Generate referral code
+                  Create local demo code
                 </button>
-                <p className="form-note">Local demo membership stored in this browser only.</p>
               </form>
             )}
           </div>

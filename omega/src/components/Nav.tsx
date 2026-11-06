@@ -4,14 +4,17 @@ import './Nav.css'
 const links = [
   { to: '/', label: 'Product', end: true },
   { to: '/label', label: 'Label' },
-  { to: '/club', label: 'Executive Club' },
-  { to: '/wealth', label: 'Wealth' },
+  { to: '/club', label: 'Club demo' },
+  { to: '/wealth', label: 'Network' },
   { to: '/dashboard', label: 'Dashboard' },
 ] as const
 
 export function Nav() {
   return (
     <header className="nav">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <div className="shell nav-inner">
         <NavLink to="/" className="nav-brand" end>
           <span className="brand-mark">OMEGA</span>
@@ -30,7 +33,7 @@ export function Nav() {
           ))}
         </nav>
         <NavLink to="/club" className="btn btn-gold nav-cta">
-          Join Club
+          Try club demo
         </NavLink>
       </div>
     </header>

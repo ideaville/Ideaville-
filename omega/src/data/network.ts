@@ -5,68 +5,70 @@ export type Rank = {
   name: string
   headline: string
   entry: string
-  commission: string
-  residual: string
-  perks: string[]
+  /** Sales-facing: never show unverified payout numbers here. */
+  commercialStatus: string
+  intent: string[]
 }
 
+/**
+ * Rank structure preserved for the demo ladder.
+ * Commission %, residuals, and equity-pool figures are NOT approved commercial terms
+ * and must not appear on sales-facing surfaces.
+ */
 export const ranks: Rank[] = [
   {
     id: 'member',
     name: 'Member',
     headline: 'Drive with OMEGA',
-    entry: 'Purchase a starter kit',
-    commission: 'Member pricing',
-    residual: '—',
-    perks: ['Preferred retail pricing', 'Product education drops', 'Club events access'],
+    entry: 'Concept: product customer',
+    commercialStatus: 'Payout terms pending approval',
+    intent: ['Product education access', 'Club concept visibility'],
   },
   {
     id: 'advocate',
     name: 'Advocate',
-    headline: 'Share the formula',
-    entry: '3 verified referrals',
-    commission: '15% on direct sales',
-    residual: '5% on second-line orders',
-    perks: ['Personal referral link', 'Tracked payouts', 'Priority restock alerts'],
+    headline: 'Share the brand',
+    entry: 'Concept: personal referrals (threshold TBD)',
+    commercialStatus: 'Payout terms pending approval',
+    intent: ['Demo referral code', 'Education-first sharing'],
   },
   {
     id: 'partner',
     name: 'Partner',
     headline: 'Build a cell',
-    entry: '£2,500 monthly team volume',
-    commission: '20% on direct sales',
-    residual: '8% across three levels',
-    perks: ['Team dashboard', 'Co-branded assets', 'Quarterly performance bonus'],
+    entry: 'Concept: team volume (threshold TBD)',
+    commercialStatus: 'Payout terms pending approval',
+    intent: ['Team demo dashboard', 'Co-branded asset concepts'],
   },
   {
     id: 'executive',
     name: 'Executive',
     headline: 'Own the territory',
-    entry: '£10,000 monthly network volume',
-    commission: '25% on direct sales',
-    residual: '12% residual + equity pool',
-    perks: ['Regional exclusivity path', 'Equity pool eligibility', 'Founders council seat'],
+    entry: 'Concept: network volume (threshold TBD)',
+    commercialStatus: 'Equity / residual ideas deferred — not offered',
+    intent: ['Regional concept seat', 'No live equity promise'],
   },
 ]
 
-export const wealthPillars = [
+export const networkPillars = [
   {
-    title: 'Product velocity',
-    body: 'Every bottle sold funds your rank. Retail demand is the floor of the model — not a vanity metric.',
+    title: 'Product first',
+    body: 'Any future network must rest on real product demand — not recruitment theatre.',
   },
   {
-    title: 'Referral leverage',
-    body: 'Advocates earn on people they personally introduce. Partners earn on the cells those Advocates grow.',
+    title: 'Referral concept',
+    body: 'Sharing tools are prototyped here as a non-transactional demo. No live signups or payouts.',
   },
   {
-    title: 'Residual depth',
-    body: 'Executives participate in a capped residual pool tied to verified network volume — designed for durability, not hype.',
+    title: 'Commercial terms',
+    body: 'Commission rates, residuals, and equity-pool language from earlier drafts are unverified and withheld pending owner approval.',
   },
 ] as const
 
+/** Clearly fictional mock rows — not linked to demo counters and not real money. */
 export const sampleLedger = [
-  { id: 'TX-2401', who: 'Maya R.', event: 'Starter kit', amount: 42.0, status: 'Paid' },
-  { id: 'TX-2402', who: 'Jordan K.', event: 'Reorder ×2', amount: 28.5, status: 'Paid' },
-  { id: 'TX-2403', who: 'Cell North', event: 'Team residual', amount: 116.0, status: 'Pending' },
-  { id: 'TX-2404', who: 'Samira L.', event: 'Advocate unlock', amount: 75.0, status: 'Paid' },
+  { id: 'MOCK-01', who: 'Demo user A', event: 'Fictional starter', units: 10, status: 'Mock' },
+  { id: 'MOCK-02', who: 'Demo user B', event: 'Fictional reorder', units: 6, status: 'Mock' },
+  { id: 'MOCK-03', who: 'Demo cell', event: 'Fictional residual', units: 22, status: 'Mock' },
+  { id: 'MOCK-04', who: 'Demo user C', event: 'Fictional unlock', units: 12, status: 'Mock' },
 ] as const

@@ -1,3 +1,20 @@
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  z-index: 60;
+  padding: 0.55rem 0.85rem;
+  background: var(--gold);
+  color: #111;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
 .nav {
   position: sticky;
   top: 0;
@@ -6,6 +23,13 @@
   backdrop-filter: blur(14px);
   background: rgba(7, 7, 7, 0.72);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--volt);
+  outline-offset: 2px;
 }
 
 .nav-inner {

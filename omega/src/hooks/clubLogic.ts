@@ -2,9 +2,21 @@ import type { RankId } from '../data/network'
 
 const rankOrder: RankId[] = ['member', 'advocate', 'partner', 'executive']
 
-export function makeCode(name: string, suffix = Math.floor(1000 + Math.random() * 9000)): string {
-  const stem = name
+export const MAX_DISPLAY_NAME = 40
+
+/** Demo-only point increment — not a commission rate or currency. */
+export const DEMO_POINTS_PER_REFERRAL = 10
+
+export function sanitizeDisplayName(raw: string): string {
+  return raw
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N} .'-]/gu, '')
     .trim()
+    .slice(0, MAX_DISPLAY_NAME)
+}
+
+export function makeCode(name: string, suffix = Math.floor(1000 + Math.random() * 9000)): string {
+  const stem = sanitizeDisplayName(name)
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
     .slice(0, 4)
@@ -21,12 +33,16 @@ export function nextRank(referrals: number, volume: number, floor: RankId = 'mem
 }
 
 export function applyReferral(
-  current: { referrals: number; volume: number; earnings: number; rank: RankId },
+  current: { referrals: number; volume: number; demoPoints: number; rank: RankId },
   saleValue = 48,
 ) {
   const referrals = current.referrals + 1
   const volume = current.volume + saleValue
-  const earnings = Number((current.earnings + saleValue * 0.15).toFixed(2))
+  const demoPoints = current.demoPoints + DEMO_POINTS_PER_REFERRAL
   const rank = nextRank(referrals, volume, current.rank)
-  return { referrals, volume, earnings, rank }
+  return { referrals, volume, demoPoints, rank }
+}
+
+export function isRankId(value: unknown): value is RankId {
+  return value === 'member' || value === 'advocate' || value === 'partner' || value === 'executive'
 }

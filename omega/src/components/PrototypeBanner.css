@@ -1,0 +1,38 @@
+.proto-banner {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  background: #14110a;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.35);
+  color: var(--snow);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.proto-banner-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  padding: 0.65rem 0;
+  align-items: baseline;
+}
+
+.proto-banner strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--gold-bright);
+  white-space: nowrap;
+}
+
+.proto-banner span {
+  color: var(--mute);
+  max-width: 62rem;
+}
+
+@media (max-width: 720px) {
+  .proto-banner strong {
+    white-space: normal;
+  }
+}

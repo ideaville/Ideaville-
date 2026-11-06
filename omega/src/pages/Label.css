@@ -52,11 +52,11 @@
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.55));
 }
 
-.label-downloads {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+.label-note {
   margin-top: 1.25rem;
+  color: var(--mute);
+  font-size: 0.9rem;
+  max-width: 28rem;
 }
 
 .label-copy {

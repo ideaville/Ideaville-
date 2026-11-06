@@ -1,33 +1,42 @@
-# OMEGA Performance Additives
+# OMEGA Performance Additives (prototype)
 
-Premium brand site, print-ready label system, Executive Club referrals, and Performance Network wealth ladder.
+Brand / packaging concept site plus a **non-transactional** club & network demo.
+
+**Not for production, retail sale, live payments, or regulatory labelling.**
 
 ## Run
 
 ```bash
 cd omega
 npm install
+npm test
+npm run build
 npm run dev
 ```
 
-Open the printed local URL (default `http://localhost:5173`).
+Default local URL: `http://localhost:5173`.
 
-```bash
-npm run build
-npm run preview
-```
-
-## What’s included
+## Routes
 
 | Area | Route | Notes |
 | --- | --- | --- |
-| Product story | `/` | Full-bleed hero from the design concept, benefits, specs |
-| Label system | `/label` | Front/back SVG labels + directions / storage / warnings + print specs |
-| Executive Club | `/club` | Join flow that mints a local referral code |
-| Wealth model | `/wealth` | Rank ladder (Member → Advocate → Partner → Executive) |
-| Dashboard | `/dashboard` | Demo counters, share link, sample ledger |
+| Product story | `/` | Concept hero, constrained copy, pending facts |
+| Label prototype | `/label` | Front/back SVG previews — no production downloads |
+| Club demo | `/club` | Browser-local display name + demo code only |
+| Network concept | `/wealth` | Rank structure without payout figures |
+| Demo dashboard | `/dashboard` | Simulated counters / mock ledger |
 
-Membership state is stored in `localStorage` under `omega-executive-club` for browser demos only.
+Demo state key: `localStorage['omega-executive-club']` (schema v2). Not auth.
+
+## Constraints baked into copy
+
+- Petrol only
+- No validated mpg / HP / emissions claims
+- Dose, tank coverage, and retail volume (30 vs 50) marked pending
+- Nigeria first; UK deferred; regulatory path unconfirmed
+- Network commissions / residuals / equity pool **withheld** pending approval
+
+See [`LAUNCH_REVIEW.md`](./LAUNCH_REVIEW.md) for the launch-review note.
 
 ## Brand tokens
 
@@ -35,9 +44,3 @@ Membership state is stored in `localStorage` under `omega-executive-club` for br
 - Gold `#C9A227` / bright `#E8D48A`
 - Volt blue `#00A8E8`
 - Type: Syne (display) + DM Sans (body)
-
-## Assets
-
-- `public/product-concept.jpg` — packaging concept
-- `public/labels/front-label.svg` — front face
-- `public/labels/back-label.svg` — information panel

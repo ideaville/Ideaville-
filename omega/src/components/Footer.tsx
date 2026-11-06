@@ -7,25 +7,30 @@ export function Footer() {
       <div className="shell footer-grid">
         <div>
           <p className="brand-mark footer-brand">OMEGA</p>
-          <p className="footer-copy">Performance additives for drivers who refuse compromise.</p>
+          <p className="footer-copy">
+            Petrol-only performance additive concept. Packaging and site are prototypes — not retail
+            clearance.
+          </p>
         </div>
         <div className="footer-col">
           <p className="footer-label">Explore</p>
-          <Link to="/label">Label system</Link>
-          <Link to="/club">Executive Club</Link>
-          <Link to="/wealth">Wealth model</Link>
-          <Link to="/dashboard">Member dashboard</Link>
+          <Link to="/label">Label prototype</Link>
+          <Link to="/club">Club demo</Link>
+          <Link to="/wealth">Network concept</Link>
+          <Link to="/dashboard">Demo dashboard</Link>
         </div>
         <div className="footer-col">
           <p className="footer-label">Compliance</p>
           <span>Petrol engines only</span>
-          <span>Demo ecosystem — sample ledgers</span>
-          <span>Not financial advice</span>
+          <span>Nigeria first · UK deferred</span>
+          <span>No live payments, accounts, or payouts</span>
+          <span>Browser-local demo only — not secure production auth</span>
+          <span>Not financial advice · not for production</span>
         </div>
       </div>
       <div className="shell footer-bar">
-        <span>© {new Date().getFullYear()} OMEGA Performance Additives</span>
-        <span className="footer-volt">Clean · Power · Longevity</span>
+        <span>© {new Date().getFullYear()} OMEGA concept · Ideaville prototype</span>
+        <span className="footer-volt">Design concept — not for production</span>
       </div>
     </footer>
   )

@@ -1,44 +1,51 @@
 export const brand = {
   name: 'OMEGA',
   tagline: 'PERFORMANCE ADDITIVES',
-  promise: 'Cleaner burn. Sharper response. Longer engine life.',
-  volume: '500 ml',
+  promise: 'A petrol-only performance additive concept for drivers who want a cleaner fuel-system ritual.',
   fuel: 'Petrol only',
-  treats: 'Up to 60 litres',
-  interval: 'Every 3,000–5,000 miles',
+  market: 'Nigeria first · UK deferred',
+  volume: 'Retail volume pending (30 ml vs 50 ml unresolved)',
+  dose: 'Dose and tank coverage pending validation',
 } as const
 
+/** Intended focus areas — not independently validated performance claims. */
 export const benefits = [
   {
-    title: 'Injector clarity',
-    body: 'Dissolves varnish and deposits that dull throttle response and waste fuel.',
+    title: 'Fuel-system care',
+    body: 'Concept focus: supporting a cleaner petrol fuel path. Efficacy is not independently validated.',
   },
   {
-    title: 'Combustion polish',
-    body: 'Stabilises the burn for smoother idle, cleaner plugs, and quieter running.',
+    title: 'Drive feel',
+    body: 'Concept focus: a smoother fill-up ritual. No verified mpg, horsepower, or emissions claims.',
   },
   {
-    title: 'Protective film',
-    body: 'Leaves a micro-layer that resists corrosion across the fuel system.',
+    title: 'Routine use',
+    body: 'Concept focus: a repeatable maintenance habit. Cadence and dose remain pending lab/product approval.',
   },
 ] as const
 
 export const directions = [
-  'Shake well before use.',
-  'Pour the full bottle into a nearly empty tank.',
-  'Refuel with petrol so the additive dilutes evenly.',
-  'Repeat every 3,000–5,000 miles, or before long journeys.',
+  'Directions are not approved for retail use.',
+  'Dose (including any 5 ml / 10 L or “one bottle per tank” ideas) is not validated — do not follow placeholder dosing.',
+  'Treat this panel as brand layout only until product and regulatory owners clear final copy.',
 ] as const
 
 export const storage = [
-  'Store upright in a cool, dry place.',
-  'Keep away from heat, sparks, and direct sun.',
-  'Reseal tightly after opening.',
+  'Storage wording is draft only — not retail-cleared SDS guidance.',
+  'Measured viscosity, flash point, and filled-bottle compatibility are unverified.',
+  'Do not treat this panel as shipping or warehouse instruction.',
 ] as const
 
 export const warnings = [
-  'For petrol engines only — not diesel, aviation, or marine two-stroke.',
-  'Flammable liquid. Keep away from ignition sources.',
-  'Keep out of reach of children. Avoid skin and eye contact.',
-  'Do not ingest. If swallowed, seek medical help immediately.',
+  'PETROL ENGINES ONLY — not diesel, aviation, or marine two-stroke.',
+  'Hazard classification, CRC/tactile marking, and full hazard labelling are unverified.',
+  'SDS draft is lab-only and is not retail clearance.',
+  'Design concept — not for production, sale, or on-road use guidance.',
+] as const
+
+export const pendingFacts = [
+  'Retail fill volume (30 ml vs 50 ml) unresolved',
+  'Dose / coverage not validated',
+  'Mixture classification pending',
+  'Regulatory path not confirmed (Nigeria first; UK deferred)',
 ] as const

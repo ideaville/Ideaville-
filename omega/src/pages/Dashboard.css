@@ -24,6 +24,13 @@
   text-transform: capitalize;
 }
 
+.dash-disclaimer {
+  margin-top: 0.65rem;
+  max-width: 34rem;
+  color: var(--gold-bright);
+  font-size: 0.9rem;
+}
+
 .dash-actions {
   display: flex;
   flex-wrap: wrap;

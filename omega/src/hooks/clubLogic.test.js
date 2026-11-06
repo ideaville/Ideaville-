@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { applyReferral, makeCode, nextRank } from './clubLogic.ts'
+import {
+  DEMO_POINTS_PER_REFERRAL,
+  applyReferral,
+  makeCode,
+  nextRank,
+  sanitizeDisplayName,
+} from './clubLogic.ts'
 
 describe('clubLogic', () => {
   it('builds an OMG referral code from a name stem', () => {
@@ -9,6 +15,11 @@ describe('clubLogic', () => {
 
   it('pads short names and strips non-letters', () => {
     assert.equal(makeCode('Jo!', 1001), 'OMG-JOXX-1001')
+  })
+
+  it('sanitizes display names and rejects empty junk', () => {
+    assert.equal(sanitizeDisplayName('  Ada <script>  '), 'Ada script')
+    assert.equal(sanitizeDisplayName('@@@'), '')
   })
 
   it('promotes ranks by referrals and volume', () => {
@@ -22,15 +33,14 @@ describe('clubLogic', () => {
     assert.equal(nextRank(0, 0, 'advocate'), 'advocate')
   })
 
-  it('applies commission on referral sales', () => {
+  it('awards fixed demo points — not a commission percentage', () => {
     const next = applyReferral(
-      { referrals: 0, volume: 0, earnings: 0, rank: 'advocate' },
+      { referrals: 0, volume: 0, demoPoints: 0, rank: 'member' },
       100,
     )
     assert.equal(next.referrals, 1)
     assert.equal(next.volume, 100)
-    assert.equal(next.earnings, 15)
-    assert.equal(next.rank, 'advocate')
+    assert.equal(next.demoPoints, DEMO_POINTS_PER_REFERRAL)
+    assert.equal(next.rank, 'member')
   })
 })
-

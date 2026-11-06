@@ -11,11 +11,12 @@ export function Label() {
     <main className="section label-page">
       <div className="shell">
         <div className="section-head">
-          <p className="eyebrow">Label system</p>
-          <h2>Production-ready brand face.</h2>
+          <p className="eyebrow">Label prototype</p>
+          <h2>Visual identity — not manufacturing artwork.</h2>
           <p className="lede">
-            Matte black field, metallic gold wordmark, electric blue rule, and disciplined hierarchy —
-            ready for print and digital packaging.
+            Text-only gold OMEGA (no Ω), PERFORMANCE ADDITIVES, restrained volt divider, PETROL ONLY,
+            strong spacing. Matte-black longneck/grip bottle is the preferred concept. This is a design
+            concept — not for production, print release, or retail labelling.
           </p>
         </div>
 
@@ -44,30 +45,30 @@ export function Label() {
             <div className="label-frame" key={face}>
               <img
                 src={face === 'front' ? '/labels/front-label.svg' : '/labels/back-label.svg'}
-                alt={face === 'front' ? 'OMEGA front label' : 'OMEGA back label'}
+                alt={
+                  face === 'front'
+                    ? 'OMEGA front label prototype — design concept not for production'
+                    : 'OMEGA back label prototype with placeholder directions — not for production'
+                }
               />
             </div>
-            <div className="label-downloads">
-              <a className="btn btn-ghost" href="/labels/front-label.svg" download>
-                Download front SVG
-              </a>
-              <a className="btn btn-ghost" href="/labels/back-label.svg" download>
-                Download back SVG
-              </a>
-            </div>
+            <p className="label-note">
+              SVG previews for internal review only. Production-ready downloads are intentionally not
+              offered.
+            </p>
           </div>
 
           <div className="label-copy">
             <article>
-              <h3>Directions</h3>
-              <ol>
+              <h3>Directions (pending)</h3>
+              <ul>
                 {directions.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
-              </ol>
+              </ul>
             </article>
             <article>
-              <h3>Storage</h3>
+              <h3>Storage (draft)</h3>
               <ul>
                 {storage.map((line) => (
                   <li key={line}>{line}</li>
@@ -75,7 +76,7 @@ export function Label() {
               </ul>
             </article>
             <article>
-              <h3>Warnings</h3>
+              <h3>Warnings (incomplete)</h3>
               <ul className="warn-list">
                 {warnings.map((line) => (
                   <li key={line}>{line}</li>
@@ -83,8 +84,12 @@ export function Label() {
               </ul>
             </article>
             <aside className="print-spec">
-              <p className="eyebrow">Print specs</p>
-              <p>Die: 80 × 120 mm with 3 mm bleed · Spot gold optional · Pantone-approx volt #00A8E8 · Matte laminate</p>
+              <p className="eyebrow">Artwork status</p>
+              <p>
+                No fabricated certifications, hazard pictograms, barcodes, or batch codes. Closure /
+                material / filled-bottle compatibility unverified. SDS draft is lab-only — not retail
+                clearance.
+              </p>
             </aside>
           </div>
         </div>
