@@ -1,14 +1,16 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+const apiProxy = {
+  '/api': {
+    target: 'http://127.0.0.1:8787',
+    changeOrigin: true,
+  },
+} as const
+
 export default defineConfig({
   plugins: [react()],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8787',
-        changeOrigin: true,
-      },
-    },
-  },
+  server: { proxy: { ...apiProxy } },
+  preview: { proxy: { ...apiProxy } },
 })
+

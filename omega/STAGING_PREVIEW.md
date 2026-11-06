@@ -19,13 +19,17 @@
 3. An ignore-build / production guard cancels incorrect **production** targeting; **preview** builds on this branch are allowed.
 4. Parent / connected Vercel MCP owns live deployment status and access verification. Agents must **not** deploy via local Vercel CLI or request/store deploy tokens in chat or the repo.
 
+## API packaging on the protected preview
+
+The Vite framework preset only emits SPA assets. This branch builds with **Build Output API** (`npm run build:vercel`) so `/api/*` is a real Node serverless function (`api.func`). Parent should confirm the next preview build lists a serverless function — not static files alone. `/api/health` is the proof endpoint once the function is deployed (still behind Vercel SSO).
+
 ## Commerce backend on the protected preview
 
-Shop/admin/distributor APIs require **Postgres** on the Vercel project:
+Shop/admin/distributor APIs require **Postgres** on the Vercel project (parent configures separately — agents do not create DB/projects or paid services):
 
-- Set `DATABASE_URL` on `omega-staging` (existing Postgres/Neon — do not invent new paid accounts if free tier already available).
+- Set `DATABASE_URL` on `omega-staging` when ready.
 - Optionally set `OMEGA_BOOTSTRAP_ADMIN_EMAIL` + `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` for the first admin (out-of-band; never in git).
-- Without `DATABASE_URL`, APIs **fail closed** and the shop catalogue stays empty with a readiness message.
+- Without `DATABASE_URL`, `/api/health` still works; mutating commerce returns **503**; catalog stays empty with truthful readiness.
 - Do **not** set `OMEGA_ALLOW_MEMORY_STORE` on Vercel (not durable across instances).
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md).
@@ -48,7 +52,7 @@ Cursor `publish-app` was unavailable in a prior agent session; public tunnels we
 ## Local app verification (unchanged commands)
 
 ```bash
-cd omega && npm test && npm run build && npm audit --omit=dev
+cd omega && npm test && npm run build:vercel && npm run verify:vercel-output && npm audit --omit=dev
 ```
 
 Doc-only updates do not require re-running those unless `omega` app/build files change.

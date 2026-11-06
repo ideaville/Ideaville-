@@ -1,38 +1,17 @@
 .login-shell {
-  max-width: 28rem;
+  max-width: var(--form-max);
+}
+
+.login-page h1 {
+  margin-bottom: var(--space-5);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
+  gap: var(--space-4);
 }
 
-.login-form label {
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--mute);
-}
-
-.login-form input {
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--snow);
-  padding: 0.85rem 1rem;
-}
-
-.form-error {
-  color: var(--danger);
-}
-
-.form-note {
-  margin-top: 1rem;
-  color: var(--mute);
-  font-size: 0.85rem;
-}
-
-.form-note code {
-  color: var(--gold-bright);
+.login-back {
+  margin-top: var(--space-5);
 }

@@ -2,14 +2,5 @@
   position: sticky;
   top: 0;
   z-index: 45;
-}
-
-.site-chrome .nav {
-  position: relative;
-  top: auto;
-}
-
-.site-chrome .proto-banner {
-  position: relative;
-  top: auto;
+  background: var(--bg);
 }

@@ -1,20 +1,62 @@
 :root {
-  --ink: #070707;
-  --ink-elevated: #101010;
-  --ink-soft: #1a1a1a;
-  --line: rgba(201, 162, 39, 0.22);
-  --gold: #c9a227;
-  --gold-bright: #e8d48a;
-  --gold-deep: #8a7018;
-  --volt: #00a8e8;
-  --volt-dim: rgba(0, 168, 232, 0.35);
-  --snow: #f3f1ea;
-  --mute: #9a9a94;
-  --danger: #d96b4c;
-  --radius: 2px;
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --max: 1120px;
-  --nav-h: 72px;
-  color-scheme: dark;
+  /* Opus brief colours — --line-strong darkened: brief #C9C5BC is ~1.58:1 on --bg (fails 3:1). */
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-sunk: #eceae5;
+  --ink: #141414;
+  --ink-2: #5c5a55;
+  --line: #e2dfd8;
+  --line-strong: #8a8680;
+  --gold: #7f642c;
+  --blue: #2f6db5;
+  --danger: #b3261e;
+  --ok: #2e6b3a;
+  --off: #8a5a00;
+  --off-bg: #fbf3e2;
+
+  --font: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --display: 600 32px/38px var(--font);
+  --h1: 600 24px/30px var(--font);
+  --h2: 600 18px/24px var(--font);
+  --body: 400 16px/24px var(--font);
+  --small: 400 14px/20px var(--font);
+  --mono: 500 14px/20px var(--font-mono);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius: 6px;
+  --radius-card: 10px;
+  --radius-chip: 999px;
+
+  --nav-h: 56px;
+  --max: 1040px;
+  --form-max: 480px;
+  --gutter: 16px;
+  --motion: 120ms ease-out;
+  --motion-pop: 180ms ease-out;
+
+  color-scheme: light;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --display: 600 40px/46px var(--font);
+    --gutter: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0ms;
+    --motion-pop: 0ms;
+  }
 }

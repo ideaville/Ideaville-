@@ -38,4 +38,4 @@ Protected Vercel preview requires `DATABASE_URL` (and optional bootstrap admin e
 | `/admin` | Admin operations |
 | `/distributor` | Distributor order view |
 
-Legacy `/club`, `/wealth`, `/dashboard` redirect away from incentive-demo UX.
+Incentive-demo routes (`/club`, `/wealth`, `/dashboard`) were removed.

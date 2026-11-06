@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { StatusLine } from '../components/StatusLine'
 import { api } from '../lib/api'
+import { copy } from '../lib/copy'
+import { useAppStatus } from '../hooks/useAppStatus'
 import './Login.css'
 
 export function Login() {
   const navigate = useNavigate()
+  const status = useAppStatus()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,44 +20,60 @@ export function Login() {
     try {
       const { user } = await api.login(email, password)
       navigate(user.role === 'admin' ? '/admin' : '/distributor')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+    } catch {
+      setError(copy.signInError)
     }
   }
+
+  const disabled = !status.canSignIn
 
   return (
     <main className="section login-page">
       <div className="shell login-shell">
-        <p className="eyebrow">App authentication</p>
-        <h2>Staff / distributor login</h2>
-        <p className="lede">
-          Vercel SSO protects the preview host; it is not an OMEGA role. Distributor and admin roles use
-          this server-side session. No public signup.
-        </p>
-        <form className="login-form" onSubmit={onSubmit}>
-          <label htmlFor="email">Email</label>
-          <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        <h1>{copy.signIn}</h1>
+        <form className="login-form" onSubmit={onSubmit} name="omega-login" data-testid="form-login">
+          <div className="field" data-testid="field-email">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={disabled}
+              aria-invalid={Boolean(error) || undefined}
+              aria-describedby={error ? 'login-error' : undefined}
+            />
+          </div>
+          <div className="field" data-testid="field-password">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={disabled}
+              aria-invalid={Boolean(error) || undefined}
+              aria-describedby={error ? 'login-error' : undefined}
+            />
+          </div>
           {error ? (
-            <p className="form-error" role="alert">
+            <p className="field-error" id="login-error" role="alert">
               {error}
             </p>
           ) : null}
-          <button type="submit" className="btn btn-gold">
-            Sign in
+          {disabled ? <StatusLine tone="warn">{copy.signInUnavailable}</StatusLine> : null}
+          <button type="submit" className="btn btn-primary" name="sign-in" data-testid="btn-sign-in" disabled={disabled}>
+            {copy.signIn}
           </button>
         </form>
-        <p className="form-note">
-          Bootstrap admin only via server env <code>OMEGA_BOOTSTRAP_ADMIN_EMAIL</code> /{' '}
-          <code>OMEGA_BOOTSTRAP_ADMIN_PASSWORD</code> when persistence is configured. <Link to="/shop">Back to shop</Link>
+        <p className="meta login-back">
+          <Link to="/shop">{copy.shop}</Link>
         </p>
       </div>
     </main>

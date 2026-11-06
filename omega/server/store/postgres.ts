@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import { badRequest, conflict, forbidden, notFound, unavailable } from '../errors.ts'
 import { newId, nowIso } from '../crypto.ts'
@@ -19,15 +16,12 @@ import {
   type StockBatch,
   type User,
 } from '../types.ts'
+import { SCHEMA_SQL_001 } from './schemaSql.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
 
-const here = path.dirname(fileURLToPath(import.meta.url))
-
 export async function migratePostgres(sql: postgres.Sql): Promise<void> {
-  const migrationPath = path.resolve(here, '../../migrations/001_init.sql')
-  const body = await readFile(migrationPath, 'utf8')
   await sql.begin(async (tx) => {
-    await tx.unsafe(body)
+    await tx.unsafe(SCHEMA_SQL_001)
     await tx`INSERT INTO schema_migrations (id) VALUES ('001_init') ON CONFLICT (id) DO NOTHING`
   })
 }
@@ -42,27 +36,56 @@ function mapSettings(rows: Array<{ key: string; value: unknown }>): Settings {
 }
 
 export function createUnconfiguredStore(): OmegaStore {
-  const fail = async () => {
+  // Explicit object — a Proxy that traps `then` breaks `async` returns / await getStore().
+  const fail = async (..._args: never[]): Promise<never> => {
     throw unavailable(
       'Persistence not configured. Set DATABASE_URL (Postgres) on Vercel omega-staging, redeploy, migrations auto-apply on boot.',
       'persistence_unconfigured',
     )
   }
-  return new Proxy({ kind: 'postgres' } as OmegaStore, {
-    get(target, prop) {
-      if (prop === 'kind') return 'postgres'
-      if (prop === 'readiness') {
-        return async () => ({
-          persistence: 'unconfigured' as const,
-          migrated: false,
-          message:
-            'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres to the Vercel project env (no secrets in git).',
-        })
+  return {
+    kind: 'postgres',
+    async readiness() {
+      return {
+        persistence: 'unconfigured' as const,
+        migrated: false,
+        message:
+          'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres to the Vercel project env (no secrets in git).',
       }
-      if (typeof prop === 'string') return fail
-      return Reflect.get(target, prop)
     },
-  })
+    getSettings: fail,
+    updateSettings: fail,
+    createUser: fail,
+    findUserByEmail: fail,
+    findUserById: fail,
+    listUsers: fail,
+    createSession: fail,
+    findSessionByTokenHash: fail,
+    deleteSession: fail,
+    createDistributor: fail,
+    listDistributors: fail,
+    getDistributor: fail,
+    updateDistributor: fail,
+    createProduct: fail,
+    listProducts: fail,
+    getProduct: fail,
+    updateProduct: fail,
+    createPrice: fail,
+    listPrices: fail,
+    activatePrice: fail,
+    createBatch: fail,
+    listBatches: fail,
+    adjustStock: fail,
+    placeOrder: fail,
+    listOrders: fail,
+    getOrder: fail,
+    setPaymentStatus: fail,
+    setFulfillmentStatus: fail,
+    createTerm: fail,
+    listTerms: fail,
+    activateTerm: fail,
+    listMovements: fail,
+  }
 }
 
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {

@@ -1,75 +1,83 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, formatNgn, type CatalogProduct } from '../lib/api'
+import { ProductImage } from '../components/ProductImage'
+import { StatusLine } from '../components/StatusLine'
+import { api, type CatalogProduct } from '../lib/api'
+import { copy } from '../lib/copy'
+import { deriveAppStatus } from '../lib/appStatus'
 import './Shop.css'
 
 export function Shop() {
   const [products, setProducts] = useState<CatalogProduct[]>([])
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null)
-  const [readiness, setReadiness] = useState<string>('')
+  const [unavailable, setUnavailable] = useState(false)
   const [error, setError] = useState('')
+  const [canOrder, setCanOrder] = useState(false)
 
   useEffect(() => {
     Promise.all([api.catalog(), api.status()])
       .then(([catalog, status]) => {
+        const app = deriveAppStatus(status, catalog)
+        setUnavailable(app.database === 'not_connected')
+        setCanOrder(app.canOrder)
+        // Public catalogue lists products but never shows unapproved sale figures — Price TBC only.
         setProducts(catalog.products)
-        setSettings(catalog.settings)
-        setReadiness(status.readiness.message)
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        setError(err.message)
+        setUnavailable(true)
+      })
   }, [])
-
-  const checkoutLive = Boolean(settings?.commercial_activation && settings?.checkout_enabled)
 
   return (
     <main className="section shop-page">
       <div className="shell">
-        <div className="section-head">
-          <p className="eyebrow">Nigeria shop · Ideaville Enterprise</p>
-          <h2>Product catalogue</h2>
-          <p className="lede">
-            Petrol-only additive concept. Checkout stays off until an admin approves saleable SKU, price,
-            stock, payment provider, and delivery policy. No efficacy claims. Historic Oct draft prices
-            appear as <em>draft</em> only.
+        <h1>{copy.shop}</h1>
+        {error ? <StatusLine tone="error">{error}</StatusLine> : null}
+
+        {unavailable ? (
+          <p className="empty" role="status" data-testid="empty-catalogue">
+            {copy.catalogueUnavailable}
           </p>
-        </div>
+        ) : null}
 
-        {error ? <p className="shop-error" role="alert">{error}</p> : null}
-        <p className="shop-status">{readiness || 'Checking backend…'}</p>
-        <p className="shop-status">
-          Checkout: {checkoutLive ? 'enabled by admin' : 'DISABLED (fail closed)'} ·{' '}
-          <Link to="/login">Staff / distributor login</Link>
-        </p>
+        {!unavailable && products.length === 0 ? (
+          <p className="empty" role="status" data-testid="empty-products">
+            {copy.noProducts}
+          </p>
+        ) : null}
 
-        <div className="shop-grid">
-          {products.map((product) => {
-            const retail = product.prices.find((p) => p.channel === 'retail')
-            return (
-              <article key={product.id} className="shop-card">
-                <p className="eyebrow">{product.sku}</p>
-                <h3>{product.name}</h3>
-                <p>{product.description}</p>
-                <ul>
-                  <li>Kind: {product.kind}</li>
-                  <li>Volume: {product.volume_ml == null ? 'unresolved / admin-set' : `${product.volume_ml} ml`}</li>
-                  <li>
-                    Sale status:{' '}
-                    {product.approved_for_sale && product.saleable ? 'approved' : 'not approved for sale'}
-                  </li>
-                  <li>
-                    Retail price:{' '}
-                    {retail
-                      ? `${formatNgn(retail.amount_kobo)} (${retail.status}${retail.label ? ` — ${retail.label}` : ''})`
-                      : 'none'}
-                  </li>
-                </ul>
-                <button type="button" className="btn btn-ghost" disabled>
-                  {checkoutLive ? 'Checkout not wired in this UI yet' : 'Checkout disabled'}
-                </button>
-              </article>
-            )
-          })}
-        </div>
+        {!unavailable && !canOrder && products.length > 0 ? (
+          <StatusLine tone="warn">{copy.ordersOff}</StatusLine>
+        ) : null}
+
+        {!unavailable && products.length > 0 ? (
+          <ul className="product-grid">
+            {products.map((product) => {
+              const orderable = canOrder && product.saleable && product.approved_for_sale
+              return (
+                <li key={product.id}>
+                  <article className="product-card" data-testid={`product-card-${product.sku}`}>
+                    <ProductImage src="/product-concept.jpg" ratio="1-1" width={480} height={480} lazy />
+                    <h2>{product.name}</h2>
+                    <p className="mono meta">{product.volume_ml != null ? `${product.volume_ml} ml` : '—'}</p>
+                    <p className="mono meta">{copy.priceTbc}</p>
+                    <Link
+                      to={`/order?sku=${encodeURIComponent(product.sku)}`}
+                      className={`btn btn-secondary${orderable ? '' : ' is-disabled'}`}
+                      data-testid={`btn-order-${product.sku}`}
+                      aria-disabled={!orderable}
+                      onClick={(e) => {
+                        if (!orderable) e.preventDefault()
+                      }}
+                    >
+                      {copy.order}
+                    </Link>
+                  </article>
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
       </div>
     </main>
   )

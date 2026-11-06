@@ -11,10 +11,22 @@
 | Layer | Choice |
 | --- | --- |
 | UI | Vite + React (existing), shop / login / admin / distributor |
-| API | Hono on Vercel Node (`api/index.ts`) |
+| API | Hono on Vercel Node (`api/index.ts`), packaged via Build Output API (`npm run build:vercel` → `.vercel/output/functions/api.func`) — **Vite SPA build alone does not ship `/api`** |
 | Auth | App sessions (HttpOnly cookie + scrypt password hashes). **Vercel SSO ≠ app roles** |
-| Persistence | Postgres via `DATABASE_URL` (migrations in `migrations/001_init.sql`). Memory store for **tests only** (`OMEGA_ALLOW_MEMORY_STORE=1` local) |
+| Persistence | Postgres via `DATABASE_URL` (schema in `migrations/001_init.sql` / `server/store/schemaSql.ts`). Memory store for **tests only** (`OMEGA_ALLOW_MEMORY_STORE=1` local) |
 | Hosting | Existing protected `omega-staging` Vercel project — do not widen protection |
+
+## Vercel packaging (required)
+
+Preview must emit **both** static SPA and a Node serverless function:
+
+1. `vercel.json` sets `framework: null` and `buildCommand: npm run build:vercel` (do not rely on Vite preset alone).
+2. `scripts/build-vercel.mjs` writes Build Output API v3 under `.vercel/output/`:
+   - `static/` — Vite `dist`
+   - `functions/api.func/` — bundled Hono handler (`shouldAddHelpers: false`)
+   - `config.json` — `/api/*` → function; SPA filesystem + `index.html` fallback
+3. Prove locally: `npm run build:vercel && npm run verify:vercel-output`
+4. `/api/health` returns `{ ok: true }` with **no** `DATABASE_URL`. Commerce routes stay **503 / empty catalog** until Postgres is configured (parent owns DB setup; this repo does not provision).
 
 ## Fail closed
 
@@ -63,6 +75,7 @@ Oct 17 notes: retail **₦6,500** / trade **₦4,500** per **50ml** stored as **
 cd omega
 npm test
 npm run build
+npm run build:vercel && npm run verify:vercel-output
 OMEGA_ALLOW_MEMORY_STORE=1 npm run dev:api   # terminal 1
 npm run dev                                  # terminal 2
 ```
