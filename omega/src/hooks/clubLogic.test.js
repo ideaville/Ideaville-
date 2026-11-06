@@ -18,14 +18,19 @@ describe('clubLogic', () => {
     assert.equal(nextRank(20, 10000), 'executive')
   })
 
+  it('never demotes below an existing floor rank', () => {
+    assert.equal(nextRank(0, 0, 'advocate'), 'advocate')
+  })
+
   it('applies commission on referral sales', () => {
     const next = applyReferral(
-      { referrals: 0, volume: 0, earnings: 0, rank: 'member' },
+      { referrals: 0, volume: 0, earnings: 0, rank: 'advocate' },
       100,
     )
     assert.equal(next.referrals, 1)
     assert.equal(next.volume, 100)
     assert.equal(next.earnings, 15)
-    assert.equal(next.rank, 'member')
+    assert.equal(next.rank, 'advocate')
   })
 })
+
