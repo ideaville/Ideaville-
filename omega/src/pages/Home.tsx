@@ -7,25 +7,21 @@ export function Home() {
     <main>
       <section className="hero">
         <div className="hero-media" aria-hidden="true">
-          <img
-            src="/product-concept.jpg"
-            alt=""
-            className="hero-image"
-          />
+          <img src="/product-concept.jpg" alt="" className="hero-image" />
           <div className="hero-shade" />
         </div>
         <div className="shell hero-copy">
-          <p className="eyebrow reveal">Design concept · Not for production</p>
+          <p className="eyebrow reveal">Ideaville Enterprise · Nigeria first</p>
           <h1 className="hero-brand reveal reveal-delay-1 brand-mark">{brand.name}</h1>
           <p className="hero-tag reveal reveal-delay-2">{brand.tagline}</p>
           <hr className="volt-rule hero-rule reveal reveal-delay-2" />
           <p className="lede reveal reveal-delay-3">{brand.promise}</p>
           <div className="hero-actions reveal reveal-delay-3">
-            <Link to="/label" className="btn btn-gold">
-              View label prototype
+            <Link to="/shop" className="btn btn-gold">
+              Nigeria shop
             </Link>
-            <Link to="/club" className="btn btn-ghost">
-              Open club demo
+            <Link to="/label" className="btn btn-ghost">
+              Label prototype
             </Link>
           </div>
         </div>
@@ -35,10 +31,11 @@ export function Home() {
         <div className="shell">
           <div className="section-head">
             <p className="eyebrow">Intended focus</p>
-            <h2>Brand direction — claims pending proof.</h2>
+            <h2>Petrol-only product story — claims pending proof.</h2>
             <p className="lede">
-              OMEGA is framed for petrol systems only. No independently validated mpg, horsepower, or
-              emissions efficacy claims are made here.
+              No independently validated mpg, horsepower, or emissions claims. Distributors already
+              exist in the field; this system helps admin manage roster, stock, and orders once
+              configured — it does not invent the business.
             </p>
           </div>
           <div className="benefit-rail">
@@ -91,20 +88,19 @@ export function Home() {
       <section className="section">
         <div className="shell ecosystem-cta">
           <div>
-            <p className="eyebrow">Ecosystem prototype</p>
-            <h2>Product story plus a non-transactional club demo.</h2>
+            <p className="eyebrow">Operations</p>
+            <h2>Shop, distributors, admin — commercial activation off.</h2>
             <p className="lede">
-              Network ranks exist as UX structure only. Commission rates, residuals, and equity-pool
-              ideas from earlier drafts are withheld pending commercial approval — nothing here accepts
-              payments or personal account signup.
+              Server-side auth and Postgres-backed persistence when DATABASE_URL is configured. Incentive
+              demo pages have been redirected to the shop. No live payments in this preview.
             </p>
           </div>
           <div className="ecosystem-actions">
-            <Link to="/wealth" className="btn btn-volt">
-              Network concept
+            <Link to="/shop" className="btn btn-volt">
+              Open shop
             </Link>
-            <Link to="/dashboard" className="btn btn-ghost">
-              Demo dashboard
+            <Link to="/login" className="btn btn-ghost">
+              Staff login
             </Link>
           </div>
         </div>

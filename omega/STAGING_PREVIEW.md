@@ -14,10 +14,21 @@
 
 ## How this branch triggers staging
 
-1. Push a meaningful commit to `cursor/omega-performance-ecosystem-8beb` (this doc update is intentional staging signal).
+1. Push a meaningful commit to `cursor/omega-performance-ecosystem-8beb`.
 2. Vercel Git integration builds a **non-master preview** for project `omega-staging` (root `omega`).
 3. An ignore-build / production guard cancels incorrect **production** targeting; **preview** builds on this branch are allowed.
 4. Parent / connected Vercel MCP owns live deployment status and access verification. Agents must **not** deploy via local Vercel CLI or request/store deploy tokens in chat or the repo.
+
+## Commerce backend on the protected preview
+
+Shop/admin/distributor APIs require **Postgres** on the Vercel project:
+
+- Set `DATABASE_URL` on `omega-staging` (existing Postgres/Neon — do not invent new paid accounts if free tier already available).
+- Optionally set `OMEGA_BOOTSTRAP_ADMIN_EMAIL` + `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` for the first admin (out-of-band; never in git).
+- Without `DATABASE_URL`, APIs **fail closed** and the shop catalogue stays empty with a readiness message.
+- Do **not** set `OMEGA_ALLOW_MEMORY_STORE` on Vercel (not durable across instances).
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Prototype-only limits (unchanged)
 

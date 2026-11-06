@@ -1,46 +1,41 @@
-# OMEGA Performance Additives (prototype)
+# OMEGA — Ideaville Enterprise (Nigeria)
 
-Brand / packaging concept site plus a **non-transactional** club & network demo.
+Petrol-only performance additive **prototype**: product story, label concept, Nigeria shop catalogue, and admin/distributor operations.
 
-**Not for production, retail sale, live payments, or regulatory labelling.**
+**Not for production / public launch.** Commercial activation is **off** by default.
+
+## Docs
+
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — stack, fail-closed rules, owner setup, readiness matrix  
+- [`STAGING_PREVIEW.md`](./STAGING_PREVIEW.md) — protected Vercel preview process  
+- [`LAUNCH_REVIEW.md`](./LAUNCH_REVIEW.md) — earlier compliance notes  
 
 ## Run
 
 ```bash
-cd omega
 npm install
 npm test
 npm run build
+```
+
+Local API + UI (memory store for local only):
+
+```bash
+OMEGA_ALLOW_MEMORY_STORE=1 npm run dev:api
 npm run dev
 ```
 
-Default local URL: `http://localhost:5173`.
+Protected Vercel preview requires `DATABASE_URL` (and optional bootstrap admin env). Without it, APIs fail closed and the shop shows an empty catalogue with readiness messaging.
 
 ## Routes
 
-| Area | Route | Notes |
-| --- | --- | --- |
-| Product story | `/` | Concept hero, constrained copy, pending facts |
-| Label prototype | `/label` | Front/back SVG previews — no production downloads |
-| Club demo | `/club` | Browser-local display name + demo code only |
-| Network concept | `/wealth` | Rank structure without payout figures |
-| Demo dashboard | `/dashboard` | Simulated counters / mock ledger |
+| Path | Purpose |
+| --- | --- |
+| `/` | Product story |
+| `/label` | Packaging prototype |
+| `/shop` | Catalogue (checkout gated) |
+| `/login` | App role login (≠ Vercel SSO) |
+| `/admin` | Admin operations |
+| `/distributor` | Distributor order view |
 
-Demo state key: `localStorage['omega-executive-club']` (schema v2). Not auth.
-
-## Constraints baked into copy
-
-- Petrol only
-- No validated mpg / HP / emissions claims
-- Dose, tank coverage, and retail volume (30 vs 50) marked pending
-- Nigeria first; UK deferred; regulatory path unconfirmed
-- Network commissions / residuals / equity pool **withheld** pending approval
-
-See [`LAUNCH_REVIEW.md`](./LAUNCH_REVIEW.md) for the launch-review note.
-
-## Brand tokens
-
-- Ink `#070707`
-- Gold `#C9A227` / bright `#E8D48A`
-- Volt blue `#00A8E8`
-- Type: Syne (display) + DM Sans (body)
+Legacy `/club`, `/wealth`, `/dashboard` redirect away from incentive-demo UX.

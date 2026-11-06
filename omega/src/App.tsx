@@ -2,11 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Footer } from './components/Footer'
 import { Nav } from './components/Nav'
 import { PrototypeBanner } from './components/PrototypeBanner'
-import { Club } from './pages/Club'
-import { Dashboard } from './pages/Dashboard'
+import { Admin } from './pages/Admin'
+import { Distributor } from './pages/Distributor'
 import { Home } from './pages/Home'
 import { Label } from './pages/Label'
-import { Wealth } from './pages/Wealth'
+import { Login } from './pages/Login'
+import { Shop } from './pages/Shop'
 import './components/SiteChrome.css'
 
 export default function App() {
@@ -20,9 +21,13 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/label" element={<Label />} />
-          <Route path="/club" element={<Club />} />
-          <Route path="/wealth" element={<Wealth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/distributor" element={<Distributor />} />
+          <Route path="/club" element={<Navigate to="/shop" replace />} />
+          <Route path="/wealth" element={<Navigate to="/shop" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

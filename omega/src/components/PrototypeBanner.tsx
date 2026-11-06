@@ -6,8 +6,8 @@ export function PrototypeBanner() {
       <div className="shell proto-banner-inner">
         <strong>Prototype — not for production or sale.</strong>
         <span>
-          No live payments, signups, or payouts. Petrol-only concept. Nigeria-first market framing; UK
-          deferred. Efficacy, dose, retail volume, and network economics are pending owner approval.
+          Ideaville Enterprise · petrol only · Nigeria first. Shop/checkout fail closed until admin
+          activation. No live payments, fabricated commissions, or efficacy claims. App login ≠ Vercel SSO.
         </span>
       </div>
     </aside>

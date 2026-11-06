@@ -1,0 +1,41 @@
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.shop-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shop-card h3 {
+  font-size: 1.15rem;
+}
+
+.shop-card p,
+.shop-card li {
+  color: var(--mute);
+  font-size: 0.92rem;
+}
+
+.shop-card ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shop-status {
+  color: var(--gold-bright);
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.shop-error {
+  color: var(--danger);
+}
