@@ -1,69 +1,50 @@
 # OMEGA private staging preview — status
 
-**Date:** 6 November 2026 (Europe/London)  
+**Updated:** 6 November 2026 (Europe/London)  
 **PR:** https://github.com/ideaville/Ideaville-/pull/5  
-**Branch:** `cursor/omega-performance-ecosystem-8beb`  
-**Requester:** Femi Adeoye — private phone preview for Femi + Kay  
-**Constraint:** Real platform access control required. No public tunnels, obscure URLs, robots-only, or client-side password gates. No merge to `master`, no public launch, no payments.
+**Branch:** `cursor/omega-performance-ecosystem-8beb` (Git-triggered Vercel **preview** only)  
+**Vercel project:** `omega-staging` (`prj_RYEXlnn26lyonNWSNlcQAei3PwaL`) — linked `ideaville/Ideaville-`, root `omega`, Vite  
+**Audience:** Femi + Kay phone testing behind platform authentication
 
-## Investigation summary
+## Access control (required)
 
-| Option | Result |
-| --- | --- |
-| Cursor App Publish (`publish-app`, private/team Cursor sign-in gate) | **Tool not available in this agent run.** `cursor-cloud` MCP exposes environment/agent diagnostics only; `publish-app` / `list-available-secrets` / `bind-app-secrets` / `add-app-identity` are absent. Call attempt returned tool-not-found. |
-| Vercel / Netlify / Cloudflare / Render / Fly / Railway CLI or tokens | **Not present.** No CLI auth files, no related environment variables, no project link under `.vercel` / `.netlify`. |
-| GitHub Pages | **Not configured** (API 404). |
-| GitHub Environments / Actions deploy secrets | **No environments** (`total_count: 0`). Secrets listing not accessible to this integration (403). |
-| Repo deploy configs | None (`vercel.json`, `netlify.toml`, workflows, etc.). |
-| Public tunnel fallback (ngrok etc.) | **Not used** (explicitly disallowed). |
+- **Mechanism:** Vercel Authentication / SSO protection (`ssoProtection`) with `deploymentType: all` — real platform gate, not an obscure URL, `robots.txt`, or client-side password.
+- Unauthenticated browsers must be denied by Vercel before any prototype HTML is served.
+- Authorised viewers sign in through Vercel’s protection flow, then use the PR **preview** deployment on phones.
 
-## Preview URL
+## How this branch triggers staging
 
-**None issued.** No access-controlled staging host was created.
+1. Push a meaningful commit to `cursor/omega-performance-ecosystem-8beb` (this doc update is intentional staging signal).
+2. Vercel Git integration builds a **non-master preview** for project `omega-staging` (root `omega`).
+3. An ignore-build / production guard cancels incorrect **production** targeting; **preview** builds on this branch are allowed.
+4. Parent / connected Vercel MCP owns live deployment status and access verification. Agents must **not** deploy via local Vercel CLI or request/store deploy tokens in chat or the repo.
 
-## Privacy / access mechanism (intended vs actual)
+## Prototype-only limits (unchanged)
 
-- **Intended (preferred):** Cursor-hosted app with **private** or **team** visibility — platform enforces Cursor sign-in before any HTML/assets are served (real server-side gate). Team visibility is the fit if Kay is on Femi’s Cursor team; otherwise Femi invites Kay under private sharing rules in Cursor.
-- **Alternate (if Cursor publish remains unavailable):** Vercel (or similar) project with **Deployment Protection / SSO / platform authentication** enabled, linked to this repo’s PR branch only — not password in client JS.
-- **Actual:** Blocked before either path could be exercised.
+This staging surface remains a **design / UX prototype**:
 
-## Verification performed (app only)
+- Keep sticky **NOT FOR PRODUCTION** labelling.
+- Demo points and mock ledger only — **no** real payments, orders, or commissions.
+- **No** independently validated mpg / HP / emissions efficacy claims.
+- **No** collection of customer personal data beyond ephemeral browser-local demo display names.
+- Dose, retail volume, hazard labelling, and commercial network terms remain pending owner approval.
+- Nigeria-first framing; UK deferred. Do not treat staging as retail clearance.
+
+## Earlier investigation (superseded for hosting path)
+
+Cursor `publish-app` was unavailable in a prior agent session; public tunnels were refused. Hosting path is now the protected **Vercel Git preview** above. Do not widen protection settings or edit Vercel project/guard config from this repo unless the owner explicitly asks.
+
+## Local app verification (unchanged commands)
 
 ```bash
 cd omega && npm test && npm run build && npm audit --omit=dev
 ```
 
-- Tests: 6/6 passed  
-- Production build: succeeded  
-- Audit: 0 vulnerabilities  
-- Local loopback preview (`vite preview` on `127.0.0.1`) still serves the prototype for agent checks — **not** a phone-reachable private staging URL and **not** an access-control proof for unauthenticated internet clients.
+Doc-only updates do not require re-running those unless `omega` app/build files change.
 
-Unauthenticated-deny and authorised mobile navigation against a real private host: **not verified** (host missing).
+## What this agent must not do
 
-## Still mocked (unchanged)
-
-Prototype banner; demo points (not currency); mock ledger (`Mock`); no payments/orders/commissions; no efficacy claims; no customer-data collection; Nigeria-first / UK deferred framing.
-
-## Precise blocker
-
-This Cloud Agent session lacks an **authorised private-hosting integration**:
-
-1. Cursor `publish-app` MCP tools are not exposed to the run, and  
-2. No third-party hosting credentials (e.g. Vercel token + protected project) exist in the environment.
-
-## Smallest safe next step (owner)
-
-Pick **one** (no new paid plan required if Cursor team already exists or a free Vercel hobby project with protection is already available):
-
-1. **Preferred — Cursor private/team app:** In Cursor, ensure Cloud Agents can use **Publish app** for this workspace, then re-run / ask the agent to publish `omega/` as **team** (or private + invite Kay). Confirm in the publish dialog that visibility is **not** public. Or publish once from Cursor UI yourself targeting folder `omega/` with team visibility.  
-2. **Alternate — Vercel Deployment Protection:** Create/link a Vercel project to `ideaville/Ideaville-`, enable Authentication / Deployment Protection, add a `VERCEL_TOKEN` (and org/project ids if required) as a **Cloud Agent secret**, then ask the agent to deploy only the PR branch preview — still without merging `master`.
-
-Do **not** use a public preview URL, ngrok, or an in-page password as a substitute.
-
-## What was not done
-
-- No merge to `master`  
-- No public hosting  
-- No contact with Kay or others  
-- No new paid account creation attempted  
-- No secrets/tokens printed or committed  
+- Merge to `master` / touch production  
+- Change Vercel protection, ignore-build guard, or project settings  
+- Commit tokens/secrets or deploy via CLI  
+- Enable public release, payments, or marketing outreach  
