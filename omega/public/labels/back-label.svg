@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" role="img" aria-labelledby="title desc">
+  <title id="title">OMEGA Performance Additives  Back Label</title>
+  <desc id="desc">Matte black information panel with Directions, Storage, and Warnings.</desc>
+  <defs>
+    <linearGradient id="goldB" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8D48A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="600" rx="28" fill="#0B0B0B"/>
+  <rect x="18" y="18" width="364" height="564" rx="18" fill="none" stroke="#2A2A2A" stroke-width="1.5"/>
+
+  <text x="40" y="70" font-family="Syne, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="4" fill="url(#goldB)">DIRECTIONS</text>
+  <text x="40" y="100" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">1. Shake well before use.</text>
+  <text x="40" y="120" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">2. Add entire bottle to a nearly empty tank.</text>
+  <text x="40" y="140" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">3. Refuel with petrol to dilute fully.</text>
+  <text x="40" y="160" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">4. Treat every 3,0005,000 miles.</text>
+  <text x="40" y="180" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">Treats up to 60 litres / 13 gallons.</text>
+
+  <rect x="40" y="210" width="80" height="2" fill="#00A8E8"/>
+
+  <text x="40" y="250" font-family="Syne, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="4" fill="url(#goldB)">STORAGE</text>
+  <text x="40" y="280" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">Store upright in a cool, dry place</text>
+  <text x="40" y="300" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">away from ignition sources and</text>
+  <text x="40" y="320" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">direct sunlight. Keep sealed.</text>
+
+  <rect x="40" y="350" width="80" height="2" fill="#00A8E8"/>
+
+  <text x="40" y="390" font-family="Syne, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="4" fill="url(#goldB)">WARNINGS</text>
+  <text x="40" y="420" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">PETROL ENGINES ONLY. Not for diesel,</text>
+  <text x="40" y="440" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">aviation, or marine two-stroke use.</text>
+  <text x="40" y="460" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">Flammable liquid. Keep out of reach</text>
+  <text x="40" y="480" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">of children. Avoid skin / eye contact.</text>
+  <text x="40" y="500" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">Do not ingest. If swallowed, seek</text>
+  <text x="40" y="520" font-family="DM Sans, Arial, sans-serif" font-size="12" fill="#C8C8C4">medical attention immediately.</text>
+
+  <text x="40" y="560" font-family="DM Sans, Arial, sans-serif" font-size="10" letter-spacing="1" fill="#666">OMEGA · Made for performance drivers · omega.performance</text>
+</svg>

@@ -1,0 +1,20 @@
+:root {
+  --ink: #070707;
+  --ink-elevated: #101010;
+  --ink-soft: #1a1a1a;
+  --line: rgba(201, 162, 39, 0.22);
+  --gold: #c9a227;
+  --gold-bright: #e8d48a;
+  --gold-deep: #8a7018;
+  --volt: #00a8e8;
+  --volt-dim: rgba(0, 168, 232, 0.35);
+  --snow: #f3f1ea;
+  --mute: #9a9a94;
+  --danger: #d96b4c;
+  --radius: 2px;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --max: 1120px;
+  --nav-h: 72px;
+  color-scheme: dark;
+}
