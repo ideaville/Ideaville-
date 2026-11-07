@@ -198,21 +198,29 @@ export function Admin() {
         ) : null}
 
         {tab === 'distributors' ? (
-          <DataTable
-            testId="table-distributors"
-            title={copy.distributors}
-            rows={data.distributors as Record<string, unknown>[]}
-            keys={['code', 'name', 'status', 'referral_code', 'sponsor_id']}
-          />
+          <section aria-label={copy.distributors}>
+            <p className="meta" data-testid="admin-network-inspect">
+              {copy.adminNetworkInspect}
+            </p>
+            <DataTable
+              testId="table-distributors"
+              title={copy.distributors}
+              rows={data.distributors as Record<string, unknown>[]}
+              keys={['code', 'name', 'status', 'referral_code', 'sponsor_id']}
+            />
+          </section>
         ) : null}
 
         {tab === 'referrals' ? (
-          <DataTable
-            testId="table-referrals"
-            title={copy.referrals}
-            rows={(data.referrals ?? []) as Record<string, unknown>[]}
-            keys={['prospect_label', 'code', 'status', 'referrer_distributor_id', 'created_at']}
-          />
+          <section aria-label={copy.referrals}>
+            <p className="meta">{copy.adminNetworkInspect}</p>
+            <DataTable
+              testId="table-referrals"
+              title={copy.referrals}
+              rows={(data.referrals ?? []) as Record<string, unknown>[]}
+              keys={['prospect_label', 'code', 'status', 'referrer_distributor_id', 'created_at']}
+            />
+          </section>
         ) : null}
 
         {tab === 'terms' ? (

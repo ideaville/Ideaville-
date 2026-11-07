@@ -39,4 +39,6 @@ export const copy = {
   noSponsored: 'No sponsored distributors.',
   networkUnavailable: 'Network unavailable.',
   termsUnset: 'Commercial terms unset.',
+  adminNetworkInspect:
+    'Owner network inspection: distributors, referral codes, and referral records. Admin role only — not a distributor membership.',
 } as const

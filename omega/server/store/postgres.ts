@@ -17,8 +17,13 @@ import {
   type StockBatch,
   type User,
 } from '../types.ts'
-import { SCHEMA_SQL_001, SCHEMA_SQL_002 } from './schemaSql.ts'
+import { SCHEMA_SQL_000, SCHEMA_SQL_001, SCHEMA_SQL_002, SCHEMA_SQL_003 } from './schemaSql.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
+
+/** Application tables live in schema omega (not public) for PostgREST isolation. */
+export const OMEGA_SEARCH_PATH = 'omega, public'
+/** Startup GUC form (no spaces) so libpq/postgres.js connection params stay unambiguous. */
+export const OMEGA_SEARCH_PATH_GUC = 'omega,public'
 
 function normalizeDistributor(row: Distributor): Distributor {
   return {
@@ -30,12 +35,21 @@ function normalizeDistributor(row: Distributor): Distributor {
 
 export async function migratePostgres(sql: postgres.Sql): Promise<void> {
   await sql.begin(async (tx) => {
+    await tx.unsafe(SCHEMA_SQL_000)
+    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
     await tx.unsafe(SCHEMA_SQL_001)
     await tx`INSERT INTO schema_migrations (id) VALUES ('001_init') ON CONFLICT (id) DO NOTHING`
+    await tx`INSERT INTO schema_migrations (id) VALUES ('000_omega_schema') ON CONFLICT (id) DO NOTHING`
   })
   await sql.begin(async (tx) => {
+    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
     await tx.unsafe(SCHEMA_SQL_002)
     await tx`INSERT INTO schema_migrations (id) VALUES ('002_network') ON CONFLICT (id) DO NOTHING`
+  })
+  await sql.begin(async (tx) => {
+    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
+    await tx.unsafe(SCHEMA_SQL_003)
+    await tx`INSERT INTO schema_migrations (id) VALUES ('003_supabase_hardening') ON CONFLICT (id) DO NOTHING`
   })
 }
 
@@ -106,7 +120,12 @@ export function createUnconfiguredStore(): OmegaStore {
 }
 
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {
-  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20 })
+  const sql = postgres(databaseUrl, {
+    max: 5,
+    idle_timeout: 20,
+    // Keep every pooled connection on the private application schema (PG startup GUC).
+    connection: { search_path: OMEGA_SEARCH_PATH_GUC },
+  })
   await migratePostgres(sql)
 
   async function requireAdmin(actor: AuthUser) {

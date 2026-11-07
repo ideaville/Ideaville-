@@ -28,7 +28,8 @@ The Vite framework preset only emits SPA assets. This branch builds with **Build
 Shop/admin/distributor APIs require **Postgres** on the Vercel project (parent configures separately — agents do not create DB/projects or paid services):
 
 - Set `DATABASE_URL` on `omega-staging` when ready.
-- Optionally set `OMEGA_BOOTSTRAP_ADMIN_EMAIL` + `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` for the first admin (out-of-band; never in git).
+- Staging DB handoff (parent Supabase connector): [`docs/STAGING_DB_HANDOFF.md`](./docs/STAGING_DB_HANDOFF.md) — apply `migrations/staging_supabase_handoff.sql` to the **new staging** project only, then set `DATABASE_URL` + `OMEGA_BOOTSTRAP_ADMIN_EMAIL` / `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` (verified owner email; password from `scripts/generate-bootstrap-secret.sh`; never in git).
+- Owner inspects distributor Network as **admin** (Admin → Distributors / Referrals); do not invent a distributor seat for the owner.
 - Without `DATABASE_URL`, `/api/health` still works; mutating commerce returns **503**; catalog stays empty with truthful readiness.
 - Do **not** set `OMEGA_ALLOW_MEMORY_STORE` on Vercel (not durable across instances).
 

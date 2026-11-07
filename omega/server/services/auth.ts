@@ -76,10 +76,17 @@ export async function createAccount(
   })
 }
 
+/**
+ * Creates the first admin only when both bootstrap env vars are set and no admin exists.
+ * Password never logged. Role is app `admin` (scrypt session) — not Supabase Auth metadata.
+ * Owner inspects distributor Network via Admin → Distributors / Referrals (no fabricated
+ * distributor membership required).
+ */
 export async function maybeBootstrapAdmin(store: OmegaStore) {
   const email = process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase()
   const password = process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD
   if (!email || !password) return null
+  if (password.length < 10) return null
   const existing = await store.findUserByEmail(email)
   if (existing) return existing
   const users = await store.listUsers()

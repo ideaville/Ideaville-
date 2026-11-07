@@ -1,6 +1,10 @@
+/** Private application schema — preferred over public for Supabase PostgREST isolation. */
+export const SCHEMA_SQL_000 = `CREATE SCHEMA IF NOT EXISTS omega;`
+
 /** Canonical schema applied on Postgres boot. Mirrors migrations/001_init.sql. */
 export const SCHEMA_SQL_001 = `-- OMEGA commerce schema (Postgres). Apply only when DATABASE_URL is configured.
 -- Fail closed: app refuses mutating commerce ops until migrated + settings allow.
+-- Tables are created under search_path omega (set by migratePostgres).
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
   id TEXT PRIMARY KEY,
@@ -171,4 +175,82 @@ CREATE TABLE IF NOT EXISTS referrals (
 );
 
 CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals (referrer_distributor_id, created_at DESC);
+`
+
+/**
+ * Supabase / direct-Postgres hardening.
+ * Mirrors migrations/003_supabase_hardening.sql — no anon/authenticated grants;
+ * app role omega_app only; RLS on with allow policy for omega_app alone.
+ */
+export const SCHEMA_SQL_003 = `
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omega_app') THEN
+    CREATE ROLE omega_app NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA omega TO omega_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA omega TO omega_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA omega TO omega_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA omega
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO omega_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA omega
+  GRANT USAGE, SELECT ON SEQUENCES TO omega_app;
+
+REVOKE ALL ON SCHEMA omega FROM PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON SCHEMA omega FROM anon';
+    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA omega FROM anon';
+    EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA omega FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON SCHEMA omega FROM authenticated';
+    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA omega FROM authenticated';
+    EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA omega FROM authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'REVOKE ALL ON SCHEMA omega FROM service_role';
+  END IF;
+END
+$$;
+
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'schema_migrations',
+    'settings',
+    'distributors',
+    'users',
+    'sessions',
+    'products',
+    'product_prices',
+    'stock_batches',
+    'stock_movements',
+    'orders',
+    'order_lines',
+    'commercial_terms',
+    'payment_events',
+    'referrals'
+  ]
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'omega' AND table_name = t
+    ) THEN
+      EXECUTE format('ALTER TABLE omega.%I ENABLE ROW LEVEL SECURITY', t);
+      EXECUTE format('DROP POLICY IF EXISTS omega_app_all ON omega.%I', t);
+      EXECUTE format(
+        'CREATE POLICY omega_app_all ON omega.%I FOR ALL TO omega_app USING (true) WITH CHECK (true)',
+        t
+      );
+    END IF;
+  END LOOP;
+END
+$$;
 `

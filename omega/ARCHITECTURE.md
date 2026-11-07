@@ -13,7 +13,7 @@
 | UI | Vite + React (existing), shop / login / admin / distributor |
 | API | Hono on Vercel Node (`api/index.ts`), packaged via Build Output API (`npm run build:vercel` → `.vercel/output/functions/api.func`) — **Vite SPA build alone does not ship `/api`** |
 | Auth | App sessions (HttpOnly cookie + scrypt password hashes). **Vercel SSO ≠ app roles** |
-| Persistence | Postgres via `DATABASE_URL` (schema in `migrations/001_init.sql` / `server/store/schemaSql.ts`). Memory store for **tests only** (`OMEGA_ALLOW_MEMORY_STORE=1` local) |
+| Persistence | Postgres via `DATABASE_URL` — private schema **`omega`** (not `public`); DDL in `migrations/` + `server/store/schemaSql.ts`. Staging handoff: `migrations/staging_supabase_handoff.sql`. Memory store for **tests only** (`OMEGA_ALLOW_MEMORY_STORE=1` local) |
 | Hosting | Existing protected `omega-staging` Vercel project — do not widen protection |
 
 ## Vercel packaging (required)
@@ -62,13 +62,16 @@ Oct 17 notes: retail **₦6,500** / trade **₦4,500** per **50ml** stored as **
 
 ## Smallest owner setup (no secrets in git)
 
-1. Attach Postgres to Vercel project `omega-staging` (Neon/Vercel Postgres already available to the account — do not invent new paid plans if free tier exists).
-2. Set env on the preview project:
-   - `DATABASE_URL` — Postgres connection string
-   - `OMEGA_BOOTSTRAP_ADMIN_EMAIL` / `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` — first admin only (min 10 chars). Share out-of-band with Femi; never commit.
-3. Redeploy the PR preview (Git push or Vercel redeploy). Migration `001_init` runs on boot.
-4. Sign in at `/login`, review distributors/products, keep activation **off** until SKU/price/stock/payment/delivery are real.
-5. Create distributor user accounts in admin API; do not email invites from this app.
+Full staging connector process: [`docs/STAGING_DB_HANDOFF.md`](./docs/STAGING_DB_HANDOFF.md) (artifact twin: `/opt/cursor/artifacts/omega-staging-setup.md`).
+
+1. Parent provisions a **dedicated free Supabase staging** project (not production). Apply `migrations/staging_supabase_handoff.sql` (or artifact `omega-staging-schema.sql`).
+2. Set env on Vercel project `omega-staging`:
+   - `DATABASE_URL` — staging Postgres URI (prefer `omega_app` after password set; `postgres` OK for first boot)
+   - `OMEGA_BOOTSTRAP_ADMIN_EMAIL` — verified owner identity (`femiadeoye08@outlook.com` git author, or Cursor-linked `wisdomreignsnow@gmail.com`)
+   - `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` — generate with `scripts/generate-bootstrap-secret.sh`; never commit or chat-paste
+3. Redeploy preview. Migrations `000`–`003` run idempotently on boot; first admin bootstraps when env set and no admin exists.
+4. Sign in at `/login` as **admin**. Inspect network via **Admin → Distributors / Referrals** (no fabricated distributor membership).
+5. Keep activation **off** until SKU/price/stock/payment/delivery are real. Create distributor user accounts only for real partners; do not email invites from this app.
 
 ## Readiness matrix
 
