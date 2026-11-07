@@ -10,6 +10,7 @@ import {
   type PaymentEvent,
   type Product,
   type ProductPrice,
+  type Referral,
   type Session,
   type Settings,
   type StockBatch,
@@ -37,6 +38,7 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
   const linesByOrder = new Map<string, OrderLine[]>()
   const terms = new Map<string, CommercialTerm>()
   const paymentEvents: PaymentEvent[] = []
+  const referrals = new Map<string, Referral>()
 
   let chain: Promise<unknown> = Promise.resolve()
   function exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -122,8 +124,13 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
 
     async createDistributor(d) {
       if ([...distributors.values()].some((x) => x.code === d.code)) throw conflict('Distributor code exists')
-      distributors.set(d.id, d)
-      return clone(d)
+      const referralCode = d.referral_code || d.code
+      if ([...distributors.values()].some((x) => x.referral_code === referralCode)) {
+        throw conflict('Referral code exists')
+      }
+      const next = { ...d, referral_code: referralCode, sponsor_id: d.sponsor_id ?? null }
+      distributors.set(d.id, next)
+      return clone(next)
     },
 
     async listDistributors() {
@@ -135,11 +142,45 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       return d ? clone(d) : null
     },
 
+    async getDistributorByReferralCode(code) {
+      const normalized = code.trim().toUpperCase()
+      const found = [...distributors.values()].find(
+        (d) => d.referral_code.toUpperCase() === normalized || d.code.toUpperCase() === normalized,
+      )
+      return found ? clone(found) : null
+    },
+
     async updateDistributor(id, patch) {
       const current = distributors.get(id)
       if (!current) throw notFound('Distributor not found')
       const next = { ...current, ...patch, id: current.id }
+      if (next.sponsor_id === next.id) throw badRequest('Distributor cannot sponsor itself')
+      next.referral_code = next.referral_code || next.code
       distributors.set(id, next)
+      return clone(next)
+    },
+
+    async createReferral(referral) {
+      referrals.set(referral.id, referral)
+      return clone(referral)
+    },
+
+    async listReferrals(filter) {
+      return [...referrals.values()]
+        .filter((r) => {
+          if (filter?.referrerDistributorId && r.referrer_distributor_id !== filter.referrerDistributorId) return false
+          return true
+        })
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map(clone)
+    },
+
+    async voidReferral(id, actor) {
+      if (actor.role !== 'admin') throw forbidden()
+      const current = referrals.get(id)
+      if (!current) throw notFound('Referral not found')
+      const next = { ...current, status: 'void' as const }
+      referrals.set(id, next)
       return clone(next)
     },
 

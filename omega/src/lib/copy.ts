@@ -30,4 +30,13 @@ export const copy = {
   terms: 'Terms',
   payments: 'Payments',
   none: 'None',
+  network: 'Network',
+  referrals: 'Referrals',
+  referralCode: 'Referral code',
+  recordReferral: 'Record referral',
+  prospectLabel: 'Prospect label',
+  noReferrals: 'No referrals recorded.',
+  noSponsored: 'No sponsored distributors.',
+  networkUnavailable: 'Network unavailable.',
+  termsUnset: 'Commercial terms unset.',
 } as const

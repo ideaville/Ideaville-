@@ -7,6 +7,7 @@ import type {
   PaymentEvent,
   Product,
   ProductPrice,
+  Referral,
   Session,
   Settings,
   StockBatch,
@@ -49,7 +50,12 @@ export interface OmegaStore {
   createDistributor(d: Distributor): Promise<Distributor>
   listDistributors(): Promise<Distributor[]>
   getDistributor(id: string): Promise<Distributor | null>
+  getDistributorByReferralCode(code: string): Promise<Distributor | null>
   updateDistributor(id: string, patch: Partial<Distributor>): Promise<Distributor>
+
+  createReferral(referral: Referral): Promise<Referral>
+  listReferrals(filter?: { referrerDistributorId?: string }): Promise<Referral[]>
+  voidReferral(id: string, actor: AuthUser): Promise<Referral>
 
   createProduct(p: Product): Promise<Product>
   listProducts(): Promise<Product[]>

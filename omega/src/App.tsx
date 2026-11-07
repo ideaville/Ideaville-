@@ -5,6 +5,7 @@ import { Admin } from './pages/Admin'
 import { Distributor } from './pages/Distributor'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
+import { Network } from './pages/Network'
 import { Order } from './pages/Order'
 import { Shop } from './pages/Shop'
 import './components/SiteChrome.css'
@@ -23,6 +24,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/distributor" element={<Distributor />} />
+          <Route path="/network" element={<Network />} />
+          <Route path="/referrals" element={<Navigate to="/network" replace />} />
+          <Route path="/club" element={<Navigate to="/network" replace />} />
           <Route path="/label" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

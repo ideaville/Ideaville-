@@ -18,6 +18,8 @@ export async function seedHistoricDrafts(store: OmegaStore) {
       status: 'pending_terms',
       notes:
         'Distribution/validation partner for Ideaville Enterprise (Nigeria). Not an app admin. No invented contact details. Terms not yet on file.',
+      sponsor_id: null,
+      referral_code: 'KAY-PARTNER',
       created_at: nowIso(),
     })
   }

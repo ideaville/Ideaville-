@@ -37,9 +37,14 @@ export function Nav() {
             </NavLink>
           ) : null}
           {user?.role === 'distributor' ? (
-            <NavLink to="/distributor" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')}>
-              {copy.orders}
-            </NavLink>
+            <>
+              <NavLink to="/distributor" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')}>
+                {copy.orders}
+              </NavLink>
+              <NavLink to="/network" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')}>
+                {copy.network}
+              </NavLink>
+            </>
           ) : null}
           {user ? (
             <button type="button" className="nav-link nav-button" data-testid="btn-sign-out" onClick={signOut}>

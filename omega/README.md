@@ -36,6 +36,7 @@ Protected Vercel preview requires `DATABASE_URL` (and optional bootstrap admin e
 | `/shop` | Catalogue (checkout gated) |
 | `/login` | App role login (≠ Vercel SSO) |
 | `/admin` | Admin operations |
-| `/distributor` | Distributor order view |
+| `/distributor` | Distributor orders + link to network |
+| `/network` | Distributor referral code, recorded referrals, sponsored distributors, terms (unset until admin records rates) |
 
-Incentive-demo routes (`/club`, `/wealth`, `/dashboard`) were removed.
+`/club` and `/referrals` redirect to `/network`. Client-only demo wealth/earnings UI was removed; referral attribution is server-side and tenant-scoped.

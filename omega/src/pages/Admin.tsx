@@ -12,7 +12,7 @@ const GATES = [
   'delivery_policy_configured',
 ] as const
 
-type Tab = 'activation' | 'catalogue' | 'stock' | 'orders' | 'distributors' | 'terms'
+type Tab = 'activation' | 'catalogue' | 'stock' | 'orders' | 'distributors' | 'referrals' | 'terms'
 
 export function Admin() {
   const navigate = useNavigate()
@@ -102,6 +102,7 @@ export function Admin() {
               ['stock', copy.stock],
               ['orders', copy.orders],
               ['distributors', copy.distributors],
+              ['referrals', copy.referrals],
               ['terms', copy.terms],
             ] as const
           ).map(([id, label]) => (
@@ -201,7 +202,16 @@ export function Admin() {
             testId="table-distributors"
             title={copy.distributors}
             rows={data.distributors as Record<string, unknown>[]}
-            keys={['code', 'name', 'status']}
+            keys={['code', 'name', 'status', 'referral_code', 'sponsor_id']}
+          />
+        ) : null}
+
+        {tab === 'referrals' ? (
+          <DataTable
+            testId="table-referrals"
+            title={copy.referrals}
+            rows={(data.referrals ?? []) as Record<string, unknown>[]}
+            keys={['prospect_label', 'code', 'status', 'referrer_distributor_id', 'created_at']}
           />
         ) : null}
 

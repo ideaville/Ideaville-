@@ -132,6 +132,8 @@ describe('OMEGA commerce security', () => {
       code: 'DA',
       status: 'active',
       notes: '',
+      sponsor_id: null,
+      referral_code: '',
       created_at: nowIso(),
     })
     const distUser = await store.createUser({
@@ -177,6 +179,8 @@ describe('OMEGA commerce security', () => {
       code: 'A1',
       status: 'active',
       notes: '',
+      sponsor_id: null,
+      referral_code: '',
       created_at: nowIso(),
     })
     const b = await store.createDistributor({
@@ -185,6 +189,8 @@ describe('OMEGA commerce security', () => {
       code: 'B1',
       status: 'active',
       notes: '',
+      sponsor_id: null,
+      referral_code: '',
       created_at: nowIso(),
     })
     const userA = await store.createUser({
