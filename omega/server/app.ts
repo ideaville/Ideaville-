@@ -193,19 +193,105 @@ export function createApp() {
     return c.json({ orders })
   })
 
+  /** Tenant-scoped referral + network view for a signed-in distributor. */
+  app.get('/api/distributor/network', async (c) => {
+    const store = await getStore()
+    const user = await requireRole(store, c.get('rawToken'), 'distributor')
+    if (!user.distributor_id) throw badRequest('Distributor account incomplete')
+    const self = await store.getDistributor(user.distributor_id)
+    if (!self) throw badRequest('Distributor not found')
+    const all = await store.listDistributors()
+    const sponsored = all.filter((d) => d.sponsor_id === self.id)
+    const referrals = await store.listReferrals({ referrerDistributorId: self.id })
+    const terms = await store.listTerms(self.id)
+    return c.json({
+      self: {
+        id: self.id,
+        name: self.name,
+        code: self.code,
+        status: self.status,
+        referral_code: self.referral_code,
+        sponsor_id: self.sponsor_id,
+      },
+      sponsored: sponsored.map((d) => ({
+        id: d.id,
+        name: d.name,
+        code: d.code,
+        status: d.status,
+        referral_code: d.referral_code,
+      })),
+      referrals,
+      terms: terms.map((t) => ({
+        id: t.id,
+        kind: t.kind,
+        status: t.status,
+        rate_bps: t.rate_bps,
+        notes: t.notes,
+      })),
+      commercial_note:
+        'No commission, residual, or equity figures are invented. Terms appear only when admin has recorded them.',
+    })
+  })
+
+  app.post('/api/distributor/referrals', async (c) => {
+    const store = await getStore()
+    const user = await requireRole(store, c.get('rawToken'), 'distributor')
+    if (!user.distributor_id) throw badRequest('Distributor account incomplete')
+    const self = await store.getDistributor(user.distributor_id)
+    if (!self) throw badRequest('Distributor not found')
+    if (self.status === 'suspended') throw forbidden('Distributor suspended')
+    const body = await c.req.json<{ prospect_label?: string; notes?: string }>()
+    const label = (body.prospect_label ?? '').trim().slice(0, 80)
+    if (!label) throw badRequest('prospect_label required (short non-PII label)')
+    const referral = await store.createReferral({
+      id: newId(),
+      referrer_distributor_id: self.id,
+      referrer_user_id: user.id,
+      code: self.referral_code,
+      prospect_label: label,
+      status: 'recorded',
+      attributed_order_id: null,
+      notes: (body.notes ?? '').trim().slice(0, 500),
+      created_at: nowIso(),
+    })
+    return c.json({ referral }, 201)
+  })
+
+  /** Resolve a referral code without inventing payout terms (public lookup). */
+  app.get('/api/referrals/lookup', async (c) => {
+    const store = await getStore()
+    const readiness = await store.readiness()
+    if (readiness.persistence === 'unconfigured') {
+      return c.json({ found: false, readiness }, 503)
+    }
+    const code = (c.req.query('code') ?? '').trim()
+    if (!code) throw badRequest('code required')
+    const dist = await store.getDistributorByReferralCode(code)
+    if (!dist || dist.status === 'suspended') return c.json({ found: false })
+    return c.json({
+      found: true,
+      referral_code: dist.referral_code,
+      distributor_code: dist.code,
+      status: dist.status,
+      // Name is a known business partner identity when seeded (e.g. Kay) — not a fabricated roster.
+      name: dist.name,
+    })
+  })
+
   app.get('/api/admin/overview', async (c) => {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
     await seedHistoricDrafts(store)
-    const [settings, products, distributors, orders, batches, terms] = await Promise.all([
+    const [settings, products, distributors, orders, batches, terms, referrals] = await Promise.all([
       store.getSettings(),
       store.listProducts(),
       store.listDistributors(),
       store.listOrders(),
       store.listBatches(),
       store.listTerms(),
+      store.listReferrals(),
     ])
-    return c.json({ settings, products, distributors, orders, batches, terms })
+    return c.json({ settings, products, distributors, orders, batches, terms, referrals })
   })
 
   app.patch('/api/admin/settings', async (c) => {
@@ -232,14 +318,23 @@ export function createApp() {
   app.post('/api/admin/distributors', async (c) => {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
-    const body = await c.req.json<{ name?: string; code?: string; notes?: string }>()
+    const body = await c.req.json<{
+      name?: string
+      code?: string
+      notes?: string
+      sponsor_id?: string | null
+      referral_code?: string
+    }>()
     if (!body.name || !body.code) throw badRequest('name and code required')
+    const code = body.code.trim().toUpperCase()
     const distributor = await store.createDistributor({
       id: newId(),
       name: body.name.trim(),
-      code: body.code.trim().toUpperCase(),
+      code,
       status: 'pending_terms',
       notes: body.notes ?? '',
+      sponsor_id: body.sponsor_id ?? null,
+      referral_code: (body.referral_code ?? code).trim().toUpperCase(),
       created_at: nowIso(),
     })
     return c.json({ distributor }, 201)
@@ -248,7 +343,12 @@ export function createApp() {
   app.patch('/api/admin/distributors/:id', async (c) => {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
-    const body = await c.req.json<{ status?: 'pending_terms' | 'active' | 'suspended'; notes?: string }>()
+    const body = await c.req.json<{
+      status?: 'pending_terms' | 'active' | 'suspended'
+      notes?: string
+      sponsor_id?: string | null
+      referral_code?: string
+    }>()
     const distributor = await store.updateDistributor(c.req.param('id'), body)
     return c.json({ distributor })
   })

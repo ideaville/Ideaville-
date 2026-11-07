@@ -1,0 +1,21 @@
+.network-panel {
+  border-top: 1px solid var(--line);
+  padding: var(--space-5) 0;
+}
+
+.network-panel h2 {
+  margin-bottom: var(--space-3);
+}
+
+.referral-code {
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin: var(--space-2) 0;
+}
+
+.network-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--form-max);
+}

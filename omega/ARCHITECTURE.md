@@ -42,6 +42,20 @@ Checkout requires **all** of:
 
 No client-supplied prices. No client mark-paid. No fabricated commission defaults. Wholesale margin ≠ commission.
 
+## Referral & distributor network
+
+Recovered from original ecosystem intent + launch-review constraints:
+
+| Capability | Implementation | Not included |
+| --- | --- | --- |
+| Distributor roster | Admin-managed; Kay seeded as `KAY-PARTNER` (`pending_terms`) | Invented partner names |
+| Referral codes | Per-distributor `referral_code` (defaults to code) | Public signup funnels |
+| Referral records | Server `referrals` rows with prospect label + status; tenant-scoped list/create | Demo points, £ earnings, mock ledger |
+| Network view | Sponsored distributors via optional `sponsor_id`; own referrals + terms | Rank ladder, residuals, equity promises |
+| Commission | Only via admin `commercial_terms` with explicit `rate_bps` | Auto payouts or default % |
+
+APIs: `GET/POST /api/distributor/network|referrals`, `GET /api/referrals/lookup`, admin overview includes referrals.
+
 ## Historic draft data (not live)
 
 Oct 17 notes: retail **₦6,500** / trade **₦4,500** per **50ml** stored as **draft** prices on `OMEGA-50ML-DRAFT` (not approved for sale). 30ml sample SKU non-saleable. 30 vs 50 volume unresolved.

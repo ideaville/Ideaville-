@@ -75,6 +75,12 @@ export function Distributor() {
           <p className="meta">{user.email}</p>
         </header>
 
+        <p className="meta">
+          <Link to="/network" data-testid="link-network">
+            {copy.network}
+          </Link>
+        </p>
+
         <div className="tabs" role="tablist" aria-label="Distributor sections">
           <button type="button" role="tab" className="tab" data-testid="tab-orders" aria-selected={tab === 'orders'} onClick={() => setTab('orders')}>
             {copy.orders}

@@ -39,6 +39,26 @@ export type Distributor = {
   code: string
   status: DistributorStatus
   notes: string
+  /** Optional sponsor in the distributor network — unset until owner records a real link. */
+  sponsor_id: string | null
+  /** Public attributable referral code (defaults to distributor code). */
+  referral_code: string
+  created_at: string
+}
+
+export type ReferralStatus = 'recorded' | 'attributed' | 'void'
+
+/** Attributable referral record — no payout amounts or invented ranks. */
+export type Referral = {
+  id: string
+  referrer_distributor_id: string
+  referrer_user_id: string | null
+  code: string
+  /** Short non-PII label for the prospect/intro (not a verified identity claim). */
+  prospect_label: string
+  status: ReferralStatus
+  attributed_order_id: string | null
+  notes: string
   created_at: string
 }
 

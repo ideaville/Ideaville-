@@ -11,18 +11,31 @@ import {
   type PaymentEvent,
   type Product,
   type ProductPrice,
+  type Referral,
   type Session,
   type Settings,
   type StockBatch,
   type User,
 } from '../types.ts'
-import { SCHEMA_SQL_001 } from './schemaSql.ts'
+import { SCHEMA_SQL_001, SCHEMA_SQL_002 } from './schemaSql.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
+
+function normalizeDistributor(row: Distributor): Distributor {
+  return {
+    ...row,
+    sponsor_id: row.sponsor_id ?? null,
+    referral_code: row.referral_code || row.code,
+  }
+}
 
 export async function migratePostgres(sql: postgres.Sql): Promise<void> {
   await sql.begin(async (tx) => {
     await tx.unsafe(SCHEMA_SQL_001)
     await tx`INSERT INTO schema_migrations (id) VALUES ('001_init') ON CONFLICT (id) DO NOTHING`
+  })
+  await sql.begin(async (tx) => {
+    await tx.unsafe(SCHEMA_SQL_002)
+    await tx`INSERT INTO schema_migrations (id) VALUES ('002_network') ON CONFLICT (id) DO NOTHING`
   })
 }
 
@@ -65,7 +78,11 @@ export function createUnconfiguredStore(): OmegaStore {
     createDistributor: fail,
     listDistributors: fail,
     getDistributor: fail,
+    getDistributorByReferralCode: fail,
     updateDistributor: fail,
+    createReferral: fail,
+    listReferrals: fail,
+    voidReferral: fail,
     createProduct: fail,
     listProducts: fail,
     getProduct: fail,
@@ -189,29 +206,76 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     },
 
     async createDistributor(d) {
+      const referralCode = d.referral_code || d.code
       const rows = await sql<Distributor>`
-        INSERT INTO distributors (id, name, code, status, notes, created_at)
-        VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.created_at})
+        INSERT INTO distributors (id, name, code, status, notes, sponsor_id, referral_code, created_at)
+        VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.sponsor_id}, ${referralCode}, ${d.created_at})
         RETURNING *`
-      return rows[0]
+      return normalizeDistributor(rows[0])
     },
 
     async listDistributors() {
-      return sql<Distributor>`SELECT * FROM distributors ORDER BY created_at`
+      const rows = await sql<Distributor>`SELECT * FROM distributors ORDER BY created_at`
+      return rows.map(normalizeDistributor)
     },
 
     async getDistributor(id) {
       const rows = await sql<Distributor>`SELECT * FROM distributors WHERE id = ${id} LIMIT 1`
-      return rows[0] ?? null
+      return rows[0] ? normalizeDistributor(rows[0]) : null
+    },
+
+    async getDistributorByReferralCode(code) {
+      const normalized = code.trim().toUpperCase()
+      const rows = await sql<Distributor>`
+        SELECT * FROM distributors
+        WHERE upper(referral_code) = ${normalized} OR upper(code) = ${normalized}
+        LIMIT 1`
+      return rows[0] ? normalizeDistributor(rows[0]) : null
     },
 
     async updateDistributor(id, patch) {
       const current = await store.getDistributor(id)
       if (!current) throw notFound('Distributor not found')
       const next = { ...current, ...patch, id: current.id }
+      if (next.sponsor_id === next.id) throw badRequest('Distributor cannot sponsor itself')
       const rows = await sql<Distributor>`
-        UPDATE distributors SET name=${next.name}, code=${next.code}, status=${next.status}, notes=${next.notes}
+        UPDATE distributors SET
+          name=${next.name},
+          code=${next.code},
+          status=${next.status},
+          notes=${next.notes},
+          sponsor_id=${next.sponsor_id},
+          referral_code=${next.referral_code || next.code}
         WHERE id=${id} RETURNING *`
+      return normalizeDistributor(rows[0])
+    },
+
+    async createReferral(referral) {
+      const rows = await sql<Referral>`
+        INSERT INTO referrals (
+          id, referrer_distributor_id, referrer_user_id, code, prospect_label, status, attributed_order_id, notes, created_at
+        ) VALUES (
+          ${referral.id}, ${referral.referrer_distributor_id}, ${referral.referrer_user_id}, ${referral.code},
+          ${referral.prospect_label}, ${referral.status}, ${referral.attributed_order_id}, ${referral.notes}, ${referral.created_at}
+        ) RETURNING *`
+      return rows[0]
+    },
+
+    async listReferrals(filter) {
+      if (filter?.referrerDistributorId) {
+        return sql<Referral>`
+          SELECT * FROM referrals
+          WHERE referrer_distributor_id = ${filter.referrerDistributorId}
+          ORDER BY created_at DESC`
+      }
+      return sql<Referral>`SELECT * FROM referrals ORDER BY created_at DESC`
+    },
+
+    async voidReferral(id, actor) {
+      await requireAdmin(actor)
+      const rows = await sql<Referral>`
+        UPDATE referrals SET status = 'void' WHERE id = ${id} RETURNING *`
+      if (!rows[0]) throw notFound('Referral not found')
       return rows[0]
     },
 
