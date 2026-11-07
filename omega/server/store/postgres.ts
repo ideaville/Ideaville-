@@ -249,11 +249,15 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
 
     async createDistributor(d) {
       const referralCode = d.referral_code || d.code
-      const rows = await sql<Distributor>`
-        INSERT INTO distributors (id, name, code, status, notes, sponsor_id, referral_code, created_at)
-        VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.sponsor_id}, ${referralCode}, ${d.created_at})
-        RETURNING *`
-      return normalizeDistributor(rows[0])
+      try {
+        const rows = await sql<Distributor>`
+          INSERT INTO distributors (id, name, code, status, notes, sponsor_id, referral_code, created_at)
+          VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.sponsor_id}, ${referralCode}, ${d.created_at})
+          RETURNING *`
+        return normalizeDistributor(rows[0])
+      } catch {
+        throw conflict('Distributor code or referral code exists')
+      }
     },
 
     async listDistributors() {
@@ -322,16 +326,20 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     },
 
     async createProduct(p) {
-      const rows = await sql<Product>`
-        INSERT INTO products (id, sku, name, volume_ml, kind, channel_eligibility, saleable, approved_for_sale, description, created_at)
-        VALUES (${p.id}, ${p.sku}, ${p.name}, ${p.volume_ml}, ${p.kind}, ${sql.json(p.channel_eligibility)}, ${p.saleable}, ${p.approved_for_sale}, ${p.description}, ${p.created_at})
-        RETURNING *`
-      return {
-        ...rows[0],
-        channel_eligibility:
-          typeof rows[0].channel_eligibility === 'string'
-            ? JSON.parse(rows[0].channel_eligibility as unknown as string)
-            : rows[0].channel_eligibility,
+      try {
+        const rows = await sql<Product>`
+          INSERT INTO products (id, sku, name, volume_ml, kind, channel_eligibility, saleable, approved_for_sale, description, created_at)
+          VALUES (${p.id}, ${p.sku}, ${p.name}, ${p.volume_ml}, ${p.kind}, ${sql.json(p.channel_eligibility)}, ${p.saleable}, ${p.approved_for_sale}, ${p.description}, ${p.created_at})
+          RETURNING *`
+        return {
+          ...rows[0],
+          channel_eligibility:
+            typeof rows[0].channel_eligibility === 'string'
+              ? JSON.parse(rows[0].channel_eligibility as unknown as string)
+              : rows[0].channel_eligibility,
+        }
+      } catch {
+        throw conflict('SKU exists')
       }
     },
 
