@@ -31,9 +31,11 @@ export type PlaceOrderResult = {
 export interface OmegaStore {
   readonly kind: 'memory' | 'postgres'
   readiness(): Promise<{
-    persistence: 'memory' | 'postgres' | 'unconfigured'
+    /** `error` = DATABASE_URL set but init/marker/permission failed — never treat as healthy unconfigured. */
+    persistence: 'memory' | 'postgres' | 'unconfigured' | 'error'
     migrated: boolean
     message: string
+    code?: string
   }>
   getSettings(): Promise<Settings>
   updateSettings(patch: Partial<Settings>, actor: AuthUser): Promise<Settings>

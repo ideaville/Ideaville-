@@ -64,14 +64,14 @@ Oct 17 notes: retail **₦6,500** / trade **₦4,500** per **50ml** stored as **
 
 Full staging connector process: [`docs/STAGING_DB_HANDOFF.md`](./docs/STAGING_DB_HANDOFF.md) (artifact twin: `/opt/cursor/artifacts/omega-staging-setup.md`).
 
-1. Parent provisions a **dedicated free Supabase staging** project (not production). Apply `migrations/staging_supabase_handoff.sql` (or artifact `omega-staging-schema.sql`).
-2. Set env on Vercel project `omega-staging`:
-   - `DATABASE_URL` — staging Postgres URI (prefer `omega_app` after password set; `postgres` OK for first boot)
-   - `OMEGA_BOOTSTRAP_ADMIN_EMAIL` — verified owner identity (`femiadeoye08@outlook.com` git author, or Cursor-linked `wisdomreignsnow@gmail.com`)
-   - `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` — generate with `scripts/generate-bootstrap-secret.sh`; never commit or chat-paste
-3. Redeploy preview. Migrations `000`–`003` run idempotently on boot; first admin bootstraps when env set and no admin exists.
-4. Sign in at `/login` as **admin**. Inspect network via **Admin → Distributors / Referrals** (no fabricated distributor membership).
-5. Keep activation **off** until SKU/price/stock/payment/delivery are real. Create distributor user accounts only for real partners; do not email invites from this app.
+1. Dedicated staging project `jhgnekpjywntgctgelnz` — schema already applied via connector. Parent applies `004_revoke_omega_app_create.sql` to drop leftover `CREATE` on schema for `omega_app`.
+2. Set **Preview** env on Vercel `omega-staging` (pooler only — not direct IPv6 `db.*`):
+   - `DATABASE_URL` — `omega_app.jhgnekpjywntgctgelnz` @ `aws-0-eu-west-2.pooler.supabase.com:6543` (`prepare:false`) or `:5432` session; `sslmode=require`
+   - `OMEGA_BOOTSTRAP_ADMIN_EMAIL` — verified (`femiadeoye08@outlook.com` or Cursor-linked `wisdomreignsnow@gmail.com`)
+   - `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` — `scripts/generate-bootstrap-secret.sh`; never commit/chat-paste
+3. Redeploy preview. Boot is **marker-first**: if `001`/`002`/`003` exist, skips owner DDL. Init failures → readiness `error` (not silent unconfigured).
+4. Sign in as **admin** (`distributor_id` null). Inspect network via Admin → Distributors / Referrals.
+5. Keep activation **off**. No invites from this app.
 
 ## Readiness matrix
 

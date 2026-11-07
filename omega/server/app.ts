@@ -102,7 +102,7 @@ export function createApp() {
   app.get('/api/catalog', async (c) => {
     const store = await getStore()
     const readiness = await store.readiness()
-    if (readiness.persistence === 'unconfigured') {
+    if (readiness.persistence === 'unconfigured' || readiness.persistence === 'error') {
       return c.json({
         settings: {
           commercial_activation: false,
@@ -261,7 +261,7 @@ export function createApp() {
   app.get('/api/referrals/lookup', async (c) => {
     const store = await getStore()
     const readiness = await store.readiness()
-    if (readiness.persistence === 'unconfigured') {
+    if (readiness.persistence === 'unconfigured' || readiness.persistence === 'error') {
       return c.json({ found: false, readiness }, 503)
     }
     const code = (c.req.query('code') ?? '').trim()

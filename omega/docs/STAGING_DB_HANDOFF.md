@@ -1,96 +1,97 @@
 # OMEGA staging DB handoff (parent connector)
 
-**Audience:** Parent agent / owner applying SQL to a **new dedicated free Supabase staging** project only.  
-**Not:** production, invitations, merge, public launch, or unapproved DB URLs.
+**Audience:** Parent / owner configuring **Preview-only** Vercel env against dedicated Supabase staging.  
+**Approved project ref:** `jhgnekpjywntgctgelnz`  
+**Approved pooler host (user-supplied — do not guess region):** `aws-0-eu-west-2.pooler.supabase.com`  
+**Not:** production, invitations, merge, public launch, printing secrets, or direct DB IPv6 endpoints.
 
 ## Artifact paths
 
 | File | Purpose |
 | --- | --- |
-| `/opt/cursor/artifacts/omega-staging-schema.sql` | Exact idempotent SQL for connector apply |
-| `/opt/cursor/artifacts/omega-staging-setup.md` | This process |
-| Repo mirror: `omega/migrations/staging_supabase_handoff.sql` | Same SQL, versioned in git |
+| `/opt/cursor/artifacts/omega-staging-schema.sql` | Initial idempotent schema (already applied) |
+| `/opt/cursor/artifacts/omega-revoke-omega-app-create.sql` | Revoke leftover `CREATE` on schema from `omega_app` |
+| `/opt/cursor/artifacts/omega-staging-setup.md` | Process twin of this doc |
+| `migrations/staging_supabase_handoff.sql` | Schema mirror in git |
+| `migrations/004_revoke_omega_app_create.sql` | Revoke CREATE mirror in git |
 
-## Verified owner identity (do not guess)
+## Connection (Vercel Preview — parent sets secrets)
 
-Use one of these **sourced** emails for `OMEGA_BOOTSTRAP_ADMIN_EMAIL` (pick the inbox Femi will sign in with):
+**Do not use** Supabase “direct” host (`db.<ref>.supabase.co`) on free tier from Vercel — IPv6-only direct is unsuitable for typical Vercel egress. **Do not** connect as `postgres` from the app runtime.
 
-| Email | Source |
+| Piece | Value |
 | --- | --- |
-| `femiadeoye08@outlook.com` | Git author for `ideaville` commits in this repository |
-| `wisdomreignsnow@gmail.com` | Cursor Cloud run owner (`Femi Adeoye`) for this agent |
+| User | `omega_app.jhgnekpjywntgctgelnz` |
+| Host | `aws-0-eu-west-2.pooler.supabase.com` |
+| Database | `postgres` |
+| SSL | `sslmode=require` |
+| `search_path` | Set by app via startup GUC `omega,public` (tables are in schema `omega`) |
 
-**Recommended default:** `femiadeoye08@outlook.com` (repo identity). Parent may override to the Cursor-linked Gmail if that is the preferred sign-in inbox — still an existing verified source, not invented.
+### Preferred: transaction pooler `:6543`
 
-## Configuration names (Vercel project `omega-staging`)
+App sets `prepare: false` on `postgres.js` (required for transaction-mode poolers without prepared-statement support).
 
-Set these env vars on the preview/staging project only. **Never commit values.**
+```text
+postgresql://omega_app.jhgnekpjywntgctgelnz:[PASSWORD]@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?sslmode=require
+```
 
-| Name | Required | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Supabase **direct** Postgres URI (prefer session mode / port `5432`). After role setup, prefer `omega_app` user; `postgres` works for first boot (superuser bypasses RLS). |
-| `OMEGA_BOOTSTRAP_ADMIN_EMAIL` | Yes (first boot) | Verified owner email above |
-| `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` | Yes (first boot) | Generate locally; min 10 chars; store only in Vercel secrets |
-| `OMEGA_ALLOWED_ORIGINS` | Optional | Preview origin(s) for CORS |
-| `OMEGA_ALLOW_MEMORY_STORE` | **Never on Vercel** | Tests/local only |
+### Alternative: session pooler `:5432`
 
-### Generate password (parent / owner machine — do not paste into chat)
+Same user/host; use if transaction mode misbehaves. `prepare: false` remains safe.
+
+```text
+postgresql://omega_app.jhgnekpjywntgctgelnz:[PASSWORD]@aws-0-eu-west-2.pooler.supabase.com:5432/postgres?sslmode=require
+```
+
+Password stays in Vercel secret store only. Agents must not print it.
+
+## Env names
+
+| Name | Notes |
+| --- | --- |
+| `DATABASE_URL` | Pooler URL above |
+| `OMEGA_BOOTSTRAP_ADMIN_EMAIL` | Verified: `femiadeoye08@outlook.com` (git) or `wisdomreignsnow@gmail.com` (Cursor owner) |
+| `OMEGA_BOOTSTRAP_ADMIN_PASSWORD` | `scripts/generate-bootstrap-secret.sh` → Vercel only |
+| `OMEGA_ALLOW_MEMORY_STORE` | **Never** on Vercel |
+
+## Runtime behaviour (marker-first)
+
+1. On boot, app reads `omega.schema_migrations` for `001_init`, `002_network`, `003_supabase_hardening`.
+2. If **all present**: **skips** CREATE/ALTER/POLICY (owner-only). DML-only path for `omega_app`.
+3. If incomplete and role cannot DDL: **fail closed** with `persistence_schema_incomplete` / readiness `persistence: 'error'` — never masquerades as unconfigured.
+4. Permission errors → `persistence_permission_denied` / `persistence_init_failed`, not silent healthy empty.
+
+## Parent apply next (staging only)
+
+Schema handoff already applied. Still revoke unnecessary CREATE:
 
 ```bash
-openssl rand -base64 32 | tr -d '\n'
+# As postgres on project jhgnekpjywntgctgelnz only:
+# apply migrations/004_revoke_omega_app_create.sql
+# or /opt/cursor/artifacts/omega-revoke-omega-app-create.sql
 ```
 
-Put the result only into the Vercel env UI / secret store. Agents must not echo it.
+Expected remaining grants for `omega_app`:
 
-### Optional: enable `omega_app` login (after SQL applied)
+- `USAGE` on schema `omega`
+- `SELECT, INSERT, UPDATE, DELETE` on all `omega.*` tables
+- RLS enabled; policy `omega_app_all` for `omega_app` only
+- **No** `CREATE` on schema, **No** `BYPASSRLS`, **No** table ownership transfer
+- `anon` / `authenticated` / `service_role`: no access to `omega`
 
-In Supabase SQL as `postgres` (password from your secret store, not from this doc):
+## Owner Network inspection
 
-```sql
-ALTER ROLE omega_app WITH LOGIN PASSWORD '<value-from-secret-store>';
+Bootstrap creates **admin** with `distributor_id = null`. Inspect via Admin → Distributors / Referrals. Do not invent a distributor membership, commissions, or commercial rows.
+
+## Local permission proof (no Supabase credentials)
+
+```bash
+cd omega
+npm run test:pg-it:setup   # local Postgres only
+set -a; source .omega-it.env; set +a
+npm run test:pg-it
 ```
 
-Then rebuild `DATABASE_URL` with user `omega_app` and that password. Schema search_path is set by the app (`omega,public`); tables are **not** in `public`.
+## Not possible without credentials
 
-## Safe process (order)
-
-1. Parent provisions **new** free Supabase staging project (connectors). Do not reuse production.
-2. Wait for project ref from parent; do not connect unapproved URLs.
-3. Apply `/opt/cursor/artifacts/omega-staging-schema.sql` once via Supabase SQL editor / connector (as `postgres`).
-4. Confirm: `\dn` shows schema `omega`; tables under `omega.*`; roles include `omega_app`; `anon`/`authenticated` have no grants on `omega`.
-5. Set Vercel env: `DATABASE_URL`, `OMEGA_BOOTSTRAP_ADMIN_EMAIL`, `OMEGA_BOOTSTRAP_ADMIN_PASSWORD`.
-6. Redeploy PR preview (Git push or Vercel redeploy). App boot runs the same migrations idempotently + `maybeBootstrapAdmin`.
-7. Owner signs in at `/login` with bootstrap email/password → **Admin** role.
-8. Inspect network without fabricating membership: **Admin → Distributors** and **Admin → Referrals** (Kay `KAY-PARTNER` appears after historic seed; no fake paid orders).
-9. Keep `commercial_activation`, `checkout_enabled`, `payment_provider_configured` **false** until real SKU/price/stock/payment/delivery.
-
-## What the SQL does / does not do
-
-**Does**
-
-- Private schema `omega` (PostgREST defaults expose `public` / `graphql_public` only)
-- Full commerce + network tables (`001` + `002`)
-- Role `omega_app` + RLS enabled; allow policy only for `omega_app`
-- Revoke schema/table access from `PUBLIC`, `anon`, `authenticated` (and `service_role` schema usage)
-
-**Does not**
-
-- Create admin password hashes in SQL
-- Seed fake distributors beyond what the **app** seed does on boot (Kay partner record only)
-- Create orders, referrals, paid events, or commission rates
-- Enable Supabase Auth as app auth (app uses scrypt sessions)
-- Grant user-editable JWT metadata roles
-
-## Owner Network access (no fabricated distributor seat)
-
-Bootstrap creates **admin only** (`distributor_id` null). That is enough: Admin Distributors/Referrals tabs are the owner network inspection surface. Do **not** invent a distributor row for Femi unless he is recorded as a business distributor in source data.
-
-## Compatibility notes
-
-- Supabase Postgres 15+: `CREATE … IF NOT EXISTS`, partial unique indexes, RLS — supported.
-- App auto-migrate on boot mirrors this handoff (`SCHEMA_SQL_000..003` + `search_path`).
-- If parent applies SQL first, boot is a no-op for DDL (idempotent markers in `omega.schema_migrations`).
-
-## Blocked until parent sends project ref
-
-Do not open `DATABASE_URL` against an unapproved host. This handoff is ready to apply when the staging project ref arrives.
+Connecting to project `jhgnekpjywntgctgelnz` / pooler from this agent (no `DATABASE_URL` secret). Parent configures Preview env after this verification.

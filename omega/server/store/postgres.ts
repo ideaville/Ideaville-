@@ -17,13 +17,12 @@ import {
   type StockBatch,
   type User,
 } from '../types.ts'
-import { SCHEMA_SQL_000, SCHEMA_SQL_001, SCHEMA_SQL_002, SCHEMA_SQL_003 } from './schemaSql.ts'
+import { migratePostgres } from './migrate.ts'
+import { OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
 
-/** Application tables live in schema omega (not public) for PostgREST isolation. */
-export const OMEGA_SEARCH_PATH = 'omega, public'
-/** Startup GUC form (no spaces) so libpq/postgres.js connection params stay unambiguous. */
-export const OMEGA_SEARCH_PATH_GUC = 'omega,public'
+export { OMEGA_SEARCH_PATH, OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
+export { migratePostgres, REQUIRED_MIGRATION_MARKERS } from './migrate.ts'
 
 function normalizeDistributor(row: Distributor): Distributor {
   return {
@@ -31,26 +30,6 @@ function normalizeDistributor(row: Distributor): Distributor {
     sponsor_id: row.sponsor_id ?? null,
     referral_code: row.referral_code || row.code,
   }
-}
-
-export async function migratePostgres(sql: postgres.Sql): Promise<void> {
-  await sql.begin(async (tx) => {
-    await tx.unsafe(SCHEMA_SQL_000)
-    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
-    await tx.unsafe(SCHEMA_SQL_001)
-    await tx`INSERT INTO schema_migrations (id) VALUES ('001_init') ON CONFLICT (id) DO NOTHING`
-    await tx`INSERT INTO schema_migrations (id) VALUES ('000_omega_schema') ON CONFLICT (id) DO NOTHING`
-  })
-  await sql.begin(async (tx) => {
-    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
-    await tx.unsafe(SCHEMA_SQL_002)
-    await tx`INSERT INTO schema_migrations (id) VALUES ('002_network') ON CONFLICT (id) DO NOTHING`
-  })
-  await sql.begin(async (tx) => {
-    await tx.unsafe(`SET LOCAL search_path TO ${OMEGA_SEARCH_PATH}`)
-    await tx.unsafe(SCHEMA_SQL_003)
-    await tx`INSERT INTO schema_migrations (id) VALUES ('003_supabase_hardening') ON CONFLICT (id) DO NOTHING`
-  })
 }
 
 function mapSettings(rows: Array<{ key: string; value: unknown }>): Settings {
@@ -62,23 +41,24 @@ function mapSettings(rows: Array<{ key: string; value: unknown }>): Settings {
   return out
 }
 
-export function createUnconfiguredStore(): OmegaStore {
+function createFailClosedStore(
+  readiness: {
+    persistence: 'unconfigured' | 'error'
+    migrated: boolean
+    message: string
+    code: string
+  },
+  failMessage: string,
+  failCode: string,
+): OmegaStore {
   // Explicit object — a Proxy that traps `then` breaks `async` returns / await getStore().
   const fail = async (..._args: never[]): Promise<never> => {
-    throw unavailable(
-      'Persistence not configured. Set DATABASE_URL (Postgres) on Vercel omega-staging, redeploy, migrations auto-apply on boot.',
-      'persistence_unconfigured',
-    )
+    throw unavailable(failMessage, failCode)
   }
   return {
     kind: 'postgres',
     async readiness() {
-      return {
-        persistence: 'unconfigured' as const,
-        migrated: false,
-        message:
-          'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres to the Vercel project env (no secrets in git).',
-      }
+      return readiness
     },
     getSettings: fail,
     updateSettings: fail,
@@ -119,14 +99,56 @@ export function createUnconfiguredStore(): OmegaStore {
   }
 }
 
+export function createUnconfiguredStore(): OmegaStore {
+  return createFailClosedStore(
+    {
+      persistence: 'unconfigured',
+      migrated: false,
+      message:
+        'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres pooler URL to the Vercel project env (no secrets in git).',
+      code: 'persistence_unconfigured',
+    },
+    'Persistence not configured. Set DATABASE_URL (Postgres pooler) on Vercel omega-staging, redeploy.',
+    'persistence_unconfigured',
+  )
+}
+
+/** DATABASE_URL was set but connect/migrate/marker checks failed — not the same as unconfigured. */
+export function createFailedStore(err: unknown): OmegaStore {
+  const code =
+    err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+      ? (err as { code: string }).code
+      : 'persistence_init_failed'
+  const message =
+    err instanceof Error
+      ? err.message
+      : 'Postgres init failed. Check DATABASE_URL, pooler host, omega_app grants, and schema markers.'
+  return createFailClosedStore(
+    {
+      persistence: 'error',
+      migrated: false,
+      message,
+      code,
+    },
+    message,
+    code.startsWith('persistence_') ? code : 'persistence_init_failed',
+  )
+}
+
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {
+  // prepare:false is required for Supabase transaction pooler (:6543). Harmless on session (:5432).
   const sql = postgres(databaseUrl, {
     max: 5,
     idle_timeout: 20,
-    // Keep every pooled connection on the private application schema (PG startup GUC).
+    prepare: false,
     connection: { search_path: OMEGA_SEARCH_PATH_GUC },
   })
-  await migratePostgres(sql)
+  try {
+    await migratePostgres(sql)
+  } catch (err) {
+    await sql.end({ timeout: 5 }).catch(() => undefined)
+    throw err
+  }
 
   async function requireAdmin(actor: AuthUser) {
     if (actor.role !== 'admin') throw forbidden()
@@ -136,11 +158,12 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     kind: 'postgres',
 
     async readiness() {
-      const rows = await sql`SELECT id FROM schema_migrations WHERE id = '001_init'`
+      const rows = await sql`SELECT id FROM omega.schema_migrations WHERE id = '001_init'`
       return {
         persistence: 'postgres',
         migrated: rows.length > 0,
-        message: 'Postgres connected; schema migrated. Commerce enabled only after admin activation settings.',
+        message:
+          'Postgres connected; required schema markers present. Commerce enabled only after admin activation settings.',
       }
     },
 
