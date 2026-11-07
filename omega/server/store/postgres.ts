@@ -178,6 +178,8 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     async updateSettings(patch, actor) {
       await requireAdmin(actor)
       for (const [key, value] of Object.entries(patch)) {
+        // Never allow API/settings writes to touch internal recovery markers.
+        if (key.startsWith('__')) throw forbidden('Invalid settings key')
         await sql`
           INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${sql.json(value as never)}, NOW())
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
@@ -219,24 +221,32 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
         at: input.consumedAt,
       }
       const applied = await sql.begin(async (tx) => {
-        // Race-safe one-use: succeed only if unset or prior consumption used a different fingerprint
-        // (owner rotated recovery secret). Same fingerprint already consumed → no row.
+        // Durable one-use: once status=consumed, secret rotation alone cannot reopen.
+        // Re-enable only if owner explicitly deletes this settings row (separate approval).
         const claimed = await tx<{ key: string }>`
           INSERT INTO settings (key, value, updated_at)
           VALUES (${OWNER_RECOVERY_SETTINGS_KEY}, ${tx.json(claimValue as never)}, NOW())
           ON CONFLICT (key) DO UPDATE
             SET value = EXCLUDED.value, updated_at = NOW()
             WHERE (settings.value->>'status') IS DISTINCT FROM 'consumed'
-               OR (settings.value->>'fp') IS DISTINCT FROM ${input.recoveryFingerprint}
           RETURNING key`
         if (!claimed[0]) return false
+
+        const locked = await tx<{ id: string }>`
+          SELECT id FROM users
+          WHERE id = ${input.adminId}::uuid AND role = 'admin' AND active = TRUE
+          FOR UPDATE`
+        if (!locked[0]) {
+          // Roll back claim — do not leave consumed marker without a password change.
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
 
         const updated = await tx<{ id: string }>`
           UPDATE users
           SET password_hash = ${input.passwordHash}
           WHERE id = ${input.adminId}::uuid AND role = 'admin' AND active = TRUE
           RETURNING id`
-        if (!updated[0]) {
+        if (updated.length !== 1) {
           throw unavailable('Recovery target missing', 'persistence_init_failed')
         }
 

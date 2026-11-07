@@ -1,7 +1,6 @@
 import { AuthCredentialRejected } from '../authCredentialRejected.ts'
 import { forbidden, unauthorized } from '../errors.ts'
 import { hashPassword, hashToken, issueSessionToken, newId, nowIso, verifyPassword } from '../crypto.ts'
-import { bootstrapAdminIdForEmail } from '../ownerRecoveryConfig.ts'
 import type { OmegaStore } from '../store/types.ts'
 import type { AuthUser, Role } from '../types.ts'
 
@@ -94,8 +93,7 @@ export async function maybeBootstrapAdmin(store: OmegaStore) {
   const users = await store.listUsers()
   if (users.some((u) => u.role === 'admin')) return null
   return store.createUser({
-    // Align staging owner email with recovery’s fixed admin id (Bugbot: bootstrap newId mismatch).
-    id: bootstrapAdminIdForEmail(email),
+    id: newId(),
     email,
     password_hash: await hashPassword(password),
     role: 'admin',

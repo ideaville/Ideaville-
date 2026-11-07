@@ -69,6 +69,9 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
 
     async updateSettings(patch, actor) {
       if (actor.role !== 'admin') throw forbidden()
+      for (const key of Object.keys(patch)) {
+        if (key.startsWith('__')) throw forbidden('Invalid settings key')
+      }
       Object.assign(settings, patch)
       return clone(settings)
     },
@@ -97,7 +100,8 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
 
     async applyOwnerPasswordRecovery(input) {
       return exclusive(() => {
-        if (ownerRecoveryClaim?.status === 'consumed' && ownerRecoveryClaim.fp === input.recoveryFingerprint) {
+        // Once consumed, stay consumed (secret rotation does not reopen).
+        if (ownerRecoveryClaim?.status === 'consumed') {
           return { applied: false }
         }
         const user = users.get(input.adminId)

@@ -268,6 +268,24 @@ describe('OMEGA owner recovery', () => {
     assert.equal(owner?.distributor_id, null)
   })
 
+  it('secret rotation alone does not reopen after consume', async () => {
+    await seedAdmin('OldPassword!!')
+    const app = createApp()
+    const ok = await postRecovery(app, {
+      authorization: SECRET,
+      password: 'NewPassword!!',
+      password_confirm: 'NewPassword!!',
+    })
+    assert.equal(ok.status, 200)
+    process.env.OMEGA_OWNER_RECOVERY_SECRET = 'rotated-recovery-secret-yyyy'
+    const again = await postRecovery(app, {
+      authorization: 'rotated-recovery-secret-yyyy',
+      password: 'ThirdPassword!!',
+      password_confirm: 'ThirdPassword!!',
+    })
+    assert.equal(again.status, 403)
+  })
+
   it('client cannot retarget another user id; fingerprint constant for secret', async () => {
     await seedAdmin('OldPassword!!')
     const store = await getStore()

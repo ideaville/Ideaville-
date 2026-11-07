@@ -1,16 +1,15 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { AppError } from './errors.ts'
 
-/** Exact staging admin retained by owner approval — never taken from the client. */
+/**
+ * Exact existing staging admin (live row already matches). Recovery updates this id only;
+ * it does not create/recreate users. Bootstrap continues to use newId() — no deterministic
+ * spoofable bootstrap identity.
+ */
 export const STAGING_OWNER_ADMIN_ID = '85929a87-fd66-4633-aa97-c4bb6e8ea8de'
 
-/** Email that bootstraps with STAGING_OWNER_ADMIN_ID so recovery targets the same row. */
-export const STAGING_OWNER_ADMIN_EMAIL = 'wisdomreignsnow@gmail.com'
-
-/** Id to use when creating the first admin for the staging owner email. */
-export function bootstrapAdminIdForEmail(email: string): string {
-  return email.trim().toLowerCase() === STAGING_OWNER_ADMIN_EMAIL ? STAGING_OWNER_ADMIN_ID : crypto.randomUUID()
-}
+/** Max recovery window from "now" — longer EXPIRES_AT fails closed. */
+export const RECOVERY_MAX_TTL_MS = 48 * 60 * 60 * 1000
 
 /** Internal settings row — not part of public Settings / getSettings mapping. */
 export const OWNER_RECOVERY_SETTINGS_KEY = '__omega_owner_recovery'
@@ -32,6 +31,8 @@ export type OwnerRecoveryEnv = {
   secret: string | null
   expiresAtMs: number | null
   expired: boolean
+  expiryOutOfBounds: boolean
+  testMode: boolean
 }
 
 /**
@@ -53,20 +54,39 @@ export function readOwnerRecoveryEnv(env: NodeJS.ProcessEnv = process.env): Owne
   const expRaw = env.OMEGA_OWNER_RECOVERY_EXPIRES_AT?.trim()
   let expiresAtMs: number | null = null
   let expired = true
+  let expiryOutOfBounds = true
   if (expRaw) {
     const ms = Date.parse(expRaw)
     if (Number.isFinite(ms)) {
       expiresAtMs = ms
-      expired = Date.now() >= ms
+      const now = Date.now()
+      expired = now >= ms
+      // Fail closed if missing skew, already expired, or window longer than server max TTL.
+      expiryOutOfBounds = expired || ms - now > RECOVERY_MAX_TTL_MS
     }
   }
 
-  return { allowFlag, previewOk, secretConfigured, secret, expiresAtMs, expired }
+  return {
+    allowFlag,
+    previewOk,
+    secretConfigured,
+    secret,
+    expiresAtMs,
+    expired,
+    expiryOutOfBounds,
+    testMode,
+  }
 }
 
 export function assertOwnerRecoveryEnabled(env: NodeJS.ProcessEnv = process.env): string {
   const cfg = readOwnerRecoveryEnv(env)
-  if (!cfg.allowFlag || !cfg.previewOk || !cfg.secretConfigured || cfg.expired || !cfg.secret) {
+  if (
+    !cfg.allowFlag ||
+    !cfg.previewOk ||
+    !cfg.secretConfigured ||
+    cfg.expiryOutOfBounds ||
+    !cfg.secret
+  ) {
     recoveryUnavailable()
   }
   return cfg.secret

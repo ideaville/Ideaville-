@@ -8,15 +8,18 @@
 - One-use claim stored in existing `settings` key `__omega_owner_recovery` (no new migration)
 - Does **not** auto-login; owner uses `/login` afterward
 - Password and recovery authorization entered only in the HTTPS form (`/recover`)
-- Bootstrap of email `wisdomreignsnow@gmail.com` uses the **same** fixed UUID so recovery and create-once stay aligned
+- Targets **existing** admin id only; does not create/recreate users; bootstrap `newId()` unchanged
+- Requires **Postgres** store on preview (no memory fallback)
+- Consumed marker in `settings.__omega_owner_recovery` is durable; **secret rotation alone does not reopen** — owner must explicitly delete that settings row (separate approval) before another grant
+- In-process rate limit is **not** distributed across serverless isolates (residual; secret entropy is primary control)
 
 ## Fail-closed gates (all required)
 1. `OMEGA_ALLOW_OWNER_RECOVERY=1`
 2. `VERCEL_ENV=preview` (production always denied)
 3. `OMEGA_OWNER_RECOVERY_SECRET` — owner-generated, ≥24 chars, set in **Vercel UI** only (never chat)
-4. `OMEGA_OWNER_RECOVERY_EXPIRES_AT` — ISO-8601 future timestamp
+4. `OMEGA_OWNER_RECOVERY_EXPIRES_AT` — ISO-8601, must be in the future and within **48h** server max TTL
 
-After success for the current secret fingerprint, replay fails until the owner **rotates** the secret (new fingerprint).
+After success, replay fails even if the secret is rotated. Re-enable only by deleting `__omega_owner_recovery` (explicit owner SQL) then setting a new short-lived grant env.
 
 ## Owner provisioning (future approval — do not set yet without deploy approval)
 1. Approve deploy of this code to protected preview.

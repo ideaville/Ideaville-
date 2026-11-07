@@ -64,7 +64,12 @@ export async function executeOwnerPasswordRecovery(
 
   if (hitRateLimit(meta.clientKey)) recoveryUnavailable()
 
-  const secret = assertOwnerRecoveryEnabled(meta.env ?? process.env)
+  const env = meta.env ?? process.env
+  const secret = assertOwnerRecoveryEnabled(env)
+  // Staging/preview must use Postgres — never memory fallback when not in local test mode.
+  if (store.kind !== 'postgres' && env.OMEGA_OWNER_RECOVERY_TEST_MODE !== '1') {
+    recoveryUnavailable()
+  }
 
   if (!body || typeof body !== 'object') throw badRequest('Invalid recovery request')
 

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { hashPassword, newId } from './crypto.ts'
-import { STAGING_OWNER_ADMIN_EMAIL, STAGING_OWNER_ADMIN_ID } from './ownerRecoveryConfig.ts'
 import { maybeBootstrapAdmin } from './services/auth.ts'
 import { createTestStore } from './store/index.ts'
 import { SCHEMA_SQL_000, SCHEMA_SQL_001, SCHEMA_SQL_002, SCHEMA_SQL_003 } from './store/schemaSql.ts'
@@ -42,25 +41,6 @@ describe('OMEGA staging schema + bootstrap', () => {
       process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD = 'another-secret-ok'
       const blocked = await maybeBootstrapAdmin(store)
       assert.equal(blocked, null)
-    } finally {
-      if (prevEmail === undefined) delete process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL
-      else process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL = prevEmail
-      if (prevPass === undefined) delete process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD
-      else process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD = prevPass
-    }
-  })
-
-  it('bootstraps staging owner email with fixed recovery admin id', async () => {
-    const store = createTestStore()
-    const prevEmail = process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL
-    const prevPass = process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD
-    process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL = STAGING_OWNER_ADMIN_EMAIL
-    process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD = 'staging-bootstrap-secret'
-    try {
-      const created = await maybeBootstrapAdmin(store)
-      assert.ok(created)
-      assert.equal(created.id, STAGING_OWNER_ADMIN_ID)
-      assert.equal(created.email, STAGING_OWNER_ADMIN_EMAIL)
     } finally {
       if (prevEmail === undefined) delete process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL
       else process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL = prevEmail
