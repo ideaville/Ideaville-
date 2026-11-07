@@ -74,40 +74,42 @@ describe('OMEGA auth login telemetry + bare-401 mapping', () => {
     delete process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL
     delete process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD
 
-    const store = await getStore()
-    await store.createUser({
-      id: newId(),
-      email: 'wisdomreignsnow@gmail.com',
-      password_hash: await hashPassword('CorrectHorseBattery'),
-      role: 'admin',
-      distributor_id: null,
-      active: true,
-    })
-
     try {
-      await login(store, 'missing@example.com', 'CorrectHorseBattery')
-      assert.fail('expected lookup rejection')
-    } catch (err) {
-      assert.ok(err instanceof AuthCredentialRejected)
-      assert.equal(err.outcome, 'lookup_rejected')
-      assert.equal(err.status, 401)
-      assert.equal(err.code, 'unauthorized')
-      assert.equal(err.message, 'Invalid credentials')
-    }
+      const store = await getStore()
+      await store.createUser({
+        id: newId(),
+        email: 'wisdomreignsnow@gmail.com',
+        password_hash: await hashPassword('CorrectHorseBattery'),
+        role: 'admin',
+        distributor_id: null,
+        active: true,
+      })
 
-    try {
-      await login(store, 'wisdomreignsnow@gmail.com', 'WrongPassword!!')
-      assert.fail('expected verification rejection')
-    } catch (err) {
-      assert.ok(err instanceof AuthCredentialRejected)
-      assert.equal(err.outcome, 'verification_rejected')
-      assert.equal(err.status, 401)
-      assert.equal(err.code, 'unauthorized')
-      assert.equal(err.message, 'Invalid credentials')
-    }
+      try {
+        await login(store, 'missing@example.com', 'CorrectHorseBattery')
+        assert.fail('expected lookup rejection')
+      } catch (err) {
+        assert.ok(err instanceof AuthCredentialRejected)
+        assert.equal(err.outcome, 'lookup_rejected')
+        assert.equal(err.status, 401)
+        assert.equal(err.code, 'unauthorized')
+        assert.equal(err.message, 'Invalid credentials')
+      }
 
-    resetStoreSingleton()
-    delete process.env.OMEGA_ALLOW_MEMORY_STORE
+      try {
+        await login(store, 'wisdomreignsnow@gmail.com', 'WrongPassword!!')
+        assert.fail('expected verification rejection')
+      } catch (err) {
+        assert.ok(err instanceof AuthCredentialRejected)
+        assert.equal(err.outcome, 'verification_rejected')
+        assert.equal(err.status, 401)
+        assert.equal(err.code, 'unauthorized')
+        assert.equal(err.message, 'Invalid credentials')
+      }
+    } finally {
+      resetStoreSingleton()
+      delete process.env.OMEGA_ALLOW_MEMORY_STORE
+    }
   })
 
   it('HTTP login emits privacy-safe outcome lines and never leaks secrets in body or logs', async () => {
