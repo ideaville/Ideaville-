@@ -73,8 +73,13 @@ export function createApp() {
   app.post('/api/auth/login', async (c) => {
     const store = await getStore()
     await maybeBootstrapAdmin(store)
-    const body = await c.req.json<{ email?: string; password?: string }>()
-    if (!body.email || !body.password) throw badRequest('Email and password required')
+    let body: { email?: string; password?: string }
+    try {
+      body = await c.req.json<{ email?: string; password?: string }>()
+    } catch {
+      throw badRequest('Email and password required')
+    }
+    if (!body?.email || !body?.password) throw badRequest('Email and password required')
     const result = await login(store, body.email, body.password)
     setCookie(c, SESSION_COOKIE, result.token, {
       httpOnly: true,

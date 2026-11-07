@@ -20,6 +20,8 @@ export const copy = {
   ordersOff: 'Orders are off in preview.',
   signInUnavailable: 'Sign-in unavailable.',
   signInError: 'Email or password is incorrect.',
+  /** Non-credential failures (5xx, network, malformed) — never claim wrong password. */
+  signInFailed: 'Sign-in could not be completed. Try again.',
   preview: 'Preview',
   footer: 'Ideaville Enterprise · Nigeria',
   safetyPetrol: 'Petrol engines only — not diesel, aviation, or marine two-stroke.',
