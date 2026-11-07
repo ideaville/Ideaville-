@@ -9,8 +9,9 @@ import { copy } from '../src/lib/copy.ts'
 import { getStore, resetStoreSingleton } from './store/index.ts'
 
 describe('OMEGA login error distinction', () => {
-  it('UI maps only 401/unauthorized to incorrect-credentials copy', () => {
+  it('UI maps only application unauthorized code to incorrect-credentials copy', () => {
     assert.equal(messageForLoginFailure({ status: 401, code: 'unauthorized' }), copy.signInError)
+    assert.equal(messageForLoginFailure({ status: 401 }), copy.signInFailed)
     assert.equal(messageForLoginFailure({ status: 500, code: 'internal' }), copy.signInFailed)
     assert.equal(messageForLoginFailure({ status: 400, code: 'bad_request' }), copy.signInFailed)
     assert.equal(messageForLoginFailure(new TypeError('Failed to fetch')), copy.signInFailed)

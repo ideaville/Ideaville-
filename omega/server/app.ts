@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { cors } from 'hono/cors'
+import { AuthCredentialRejected } from './authCredentialRejected.ts'
+import { logAuthLoginOutcome, newLoginRequestId } from './authLoginTelemetry.ts'
 import { AppError, badRequest } from './errors.ts'
 import { newId, nowIso } from './crypto.ts'
 import { createAccount, login, logout, maybeBootstrapAdmin, requireRole, requireUser } from './services/auth.ts'
@@ -71,24 +73,37 @@ export function createApp() {
   })
 
   app.post('/api/auth/login', async (c) => {
-    const store = await getStore()
-    await maybeBootstrapAdmin(store)
-    let body: { email?: string; password?: string }
+    // Always generate rid server-side; never echo arbitrary inbound correlation headers into logs.
+    const rid = newLoginRequestId()
     try {
-      body = await c.req.json<{ email?: string; password?: string }>()
-    } catch {
-      throw badRequest('Email and password required')
+      const store = await getStore()
+      await maybeBootstrapAdmin(store)
+      let body: { email?: string; password?: string }
+      try {
+        body = await c.req.json<{ email?: string; password?: string }>()
+      } catch {
+        throw badRequest('Email and password required')
+      }
+      if (!body?.email || !body?.password) throw badRequest('Email and password required')
+      const result = await login(store, body.email, body.password)
+      logAuthLoginOutcome({ rid, outcome: 'session_created' })
+      setCookie(c, SESSION_COOKIE, result.token, {
+        httpOnly: true,
+        secure: Boolean(process.env.VERCEL),
+        sameSite: 'Lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 14,
+      })
+      return c.json({ user: result.user })
+    } catch (err) {
+      if (err instanceof AuthCredentialRejected) {
+        logAuthLoginOutcome({ rid, outcome: err.outcome })
+        throw err
+      }
+      if (err instanceof AppError) throw err
+      logAuthLoginOutcome({ rid, outcome: 'server_exception' })
+      throw err
     }
-    if (!body?.email || !body?.password) throw badRequest('Email and password required')
-    const result = await login(store, body.email, body.password)
-    setCookie(c, SESSION_COOKIE, result.token, {
-      httpOnly: true,
-      secure: Boolean(process.env.VERCEL),
-      sameSite: 'Lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 14,
-    })
-    return c.json({ user: result.user })
   })
 
   app.post('/api/auth/logout', async (c) => {
