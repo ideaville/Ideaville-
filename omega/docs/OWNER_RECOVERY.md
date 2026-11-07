@@ -8,6 +8,7 @@
 - One-use claim stored in existing `settings` key `__omega_owner_recovery` (no new migration)
 - Does **not** auto-login; owner uses `/login` afterward
 - Password and recovery authorization entered only in the HTTPS form (`/recover`)
+- Bootstrap of email `wisdomreignsnow@gmail.com` uses the **same** fixed UUID so recovery and create-once stay aligned
 
 ## Fail-closed gates (all required)
 1. `OMEGA_ALLOW_OWNER_RECOVERY=1`

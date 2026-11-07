@@ -7,7 +7,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import postgres from 'postgres'
+import { hashPassword, verifyPassword } from './crypto.ts'
 import { AppError } from './errors.ts'
+import { STAGING_OWNER_ADMIN_ID, fingerprintRecoverySecret } from './ownerRecoveryConfig.ts'
 import { maybeBootstrapAdmin } from './services/auth.ts'
 import { migratePostgres, REQUIRED_MIGRATION_MARKERS } from './store/migrate.ts'
 import { OMEGA_SEARCH_PATH_GUC } from './store/postgresPaths.ts'
@@ -112,5 +114,54 @@ describe('OMEGA preapplied schema as omega_app (integration)', { skip: !url }, (
       await admin.end({ timeout: 5 })
       await appSql.end({ timeout: 5 })
     }
+  })
+
+  it('owner recovery apply is one-use on real Postgres (success then replay)', async () => {
+    assert.ok(url)
+    const store = await tryCreatePostgresStore(url)
+    const fp = fingerprintRecoverySecret('pg-it-recovery-secret-xxxxxx')
+    // Ensure clean claim + admin row for this IT database only
+    const sql = postgres(url, {
+      max: 1,
+      prepare: false,
+      connection: { search_path: OMEGA_SEARCH_PATH_GUC },
+    })
+    try {
+      await sql`DELETE FROM sessions WHERE user_id = ${STAGING_OWNER_ADMIN_ID}::uuid`
+      await sql`DELETE FROM users WHERE id = ${STAGING_OWNER_ADMIN_ID}::uuid`
+      await sql`DELETE FROM settings WHERE key = '__omega_owner_recovery'`
+    } finally {
+      await sql.end({ timeout: 5 })
+    }
+
+    await store.createUser({
+      id: STAGING_OWNER_ADMIN_ID,
+      email: 'wisdomreignsnow@gmail.com',
+      password_hash: await hashPassword('OldPassword!!'),
+      role: 'admin',
+      distributor_id: null,
+      active: true,
+    })
+
+    const first = await store.applyOwnerPasswordRecovery({
+      adminId: STAGING_OWNER_ADMIN_ID,
+      passwordHash: await hashPassword('NewPassword!!'),
+      recoveryFingerprint: fp,
+      consumedAt: new Date().toISOString(),
+    })
+    assert.equal(first.applied, true)
+    const user = await store.findUserById(STAGING_OWNER_ADMIN_ID)
+    assert.ok(user)
+    assert.equal(await verifyPassword('NewPassword!!', user.password_hash), true)
+
+    const replay = await store.applyOwnerPasswordRecovery({
+      adminId: STAGING_OWNER_ADMIN_ID,
+      passwordHash: await hashPassword('AnotherPass!!'),
+      recoveryFingerprint: fp,
+      consumedAt: new Date().toISOString(),
+    })
+    assert.equal(replay.applied, false)
+    const still = await store.findUserById(STAGING_OWNER_ADMIN_ID)
+    assert.equal(await verifyPassword('NewPassword!!', still!.password_hash), true)
   })
 })
