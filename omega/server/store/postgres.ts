@@ -119,19 +119,19 @@ export function createFailedStore(err: unknown): OmegaStore {
     err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
       ? (err as { code: string }).code
       : 'persistence_init_failed'
-  const message =
-    err instanceof Error
-      ? err.message
-      : 'Postgres init failed. Check DATABASE_URL, pooler host, omega_app grants, and schema markers.'
+  // Never put driver/migrate text on the public readiness or AppError throw path.
+  // Detail stays in the init-time console.error in getStore().
+  const publicMessage = 'Persistence unavailable.'
+  const failCode = code.startsWith('persistence_') ? code : 'persistence_init_failed'
   return createFailClosedStore(
     {
       persistence: 'error',
       migrated: false,
-      message,
-      code,
+      message: publicMessage,
+      code: failCode,
     },
-    message,
-    code.startsWith('persistence_') ? code : 'persistence_init_failed',
+    publicMessage,
+    failCode,
   )
 }
 

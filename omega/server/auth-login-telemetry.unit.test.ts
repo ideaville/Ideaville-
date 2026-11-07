@@ -243,6 +243,44 @@ describe('OMEGA auth login telemetry + bare-401 mapping', () => {
     }
   })
 
+  it('persistence failures on login return sanitized JSON and emit server_exception', async () => {
+    resetStoreSingleton()
+    process.env.DATABASE_URL = 'postgres://omega_app:invalid@127.0.0.1:1/does_not_exist'
+    delete process.env.OMEGA_ALLOW_MEMORY_STORE
+
+    const app = createApp()
+    const lines: string[] = []
+    const originalInfo = console.info
+    console.info = (...args: unknown[]) => {
+      lines.push(args.map(String).join(' '))
+    }
+
+    try {
+      // Warm failed store
+      await app.request('/api/status')
+      const res = await app.request('/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'wisdomreignsnow@gmail.com', password: 'CorrectHorseBattery' }),
+      })
+      assert.equal(res.status, 503)
+      const json = (await res.json()) as Record<string, unknown>
+      assert.ok(String(json.code).startsWith('persistence_'))
+      assert.equal(json.error, 'Persistence unavailable.')
+      assert.equal(JSON.stringify(json).includes('ECONNREFUSED'), false)
+      assert.equal(JSON.stringify(json).includes('omega_app'), false)
+      assert.equal(messageForLoginFailure({ status: res.status, code: String(json.code) }), copy.signInFailed)
+
+      const telemetry = lines.find((l) => l.includes('outcome=server_exception'))
+      assert.ok(telemetry)
+      assert.match(telemetry!, /^\[omega\] auth_login rid=[a-f0-9]{32} outcome=server_exception$/)
+    } finally {
+      console.info = originalInfo
+      delete process.env.DATABASE_URL
+      resetStoreSingleton()
+    }
+  })
+
   it('server_exception outcome logs without stack or request body content', async () => {
     resetStoreSingleton()
     process.env.OMEGA_ALLOW_MEMORY_STORE = '1'

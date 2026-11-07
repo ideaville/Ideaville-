@@ -47,9 +47,15 @@ export function createApp() {
 
   app.onError((err, c) => {
     if (err instanceof AppError) {
+      // Persistence codes must not echo driver/schema/role detail to unauthenticated clients.
+      if (err.code.startsWith('persistence_')) {
+        console.error('[omega] persistence', err.code, err.message)
+        return c.json({ error: 'Persistence unavailable.', code: err.code }, err.status as 400)
+      }
       return c.json({ error: err.message, code: err.code }, err.status as 400)
     }
-    console.error('[omega] unhandled', err instanceof Error ? err.message : 'error')
+    // Name only — avoid leaking exception messages (connection strings, SQL) into runtime logs.
+    console.error('[omega] unhandled', err instanceof Error ? err.name : 'error')
     return c.json({ error: 'Internal error', code: 'internal' }, 500)
   })
 
@@ -86,7 +92,6 @@ export function createApp() {
       }
       if (!body?.email || !body?.password) throw badRequest('Email and password required')
       const result = await login(store, body.email, body.password)
-      logAuthLoginOutcome({ rid, outcome: 'session_created' })
       setCookie(c, SESSION_COOKIE, result.token, {
         httpOnly: true,
         secure: Boolean(process.env.VERCEL),
@@ -94,13 +99,16 @@ export function createApp() {
         path: '/',
         maxAge: 60 * 60 * 24 * 14,
       })
+      // Log only after cookie write so outcome means the success path completed.
+      logAuthLoginOutcome({ rid, outcome: 'session_created' })
       return c.json({ user: result.user })
     } catch (err) {
       if (err instanceof AuthCredentialRejected) {
         logAuthLoginOutcome({ rid, outcome: err.outcome })
         throw err
       }
-      if (err instanceof AppError) throw err
+      // bad_request is client input — no auth outcome. All other failures (incl. persistence_*) get a line.
+      if (err instanceof AppError && err.code === 'bad_request') throw err
       logAuthLoginOutcome({ rid, outcome: 'server_exception' })
       throw err
     }

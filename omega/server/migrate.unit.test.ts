@@ -19,9 +19,16 @@ describe('OMEGA migrate contracts', () => {
     assert.equal(readiness.persistence, 'error')
     assert.equal(readiness.migrated, false)
     assert.equal(readiness.code, 'persistence_permission_denied')
+    // Public readiness must not echo driver/schema text.
+    assert.equal(readiness.message, 'Persistence unavailable.')
+    assert.equal(readiness.message.includes('permission denied'), false)
     await assert.rejects(
       () => store.listUsers(),
-      (err: unknown) => err instanceof AppError && err.code === 'persistence_permission_denied' && err.status === 503,
+      (err: unknown) =>
+        err instanceof AppError &&
+        err.code === 'persistence_permission_denied' &&
+        err.status === 503 &&
+        err.message === 'Persistence unavailable.',
     )
   })
 
