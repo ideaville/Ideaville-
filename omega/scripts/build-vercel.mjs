@@ -58,6 +58,14 @@ async function main() {
   })
 
 
+  // Vercel Node mounts this directory as /var/task. ESM `import` in index.js
+  // requires an explicit module marker — otherwise Node22 throws
+  // "Cannot use import statement outside a module" before any route runs.
+  await writeFile(
+    path.join(funcDir, 'package.json'),
+    JSON.stringify({ type: 'module', private: true }, null, 2),
+  )
+
   await writeFile(
     path.join(funcDir, '.vc-config.json'),
     JSON.stringify(
