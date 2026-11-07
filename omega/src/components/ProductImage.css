@@ -1,0 +1,47 @@
+.product-image {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunk);
+}
+
+.product-image-4-5 {
+  aspect-ratio: 4 / 5;
+}
+
+.product-image-1-1 {
+  aspect-ratio: 1 / 1;
+}
+
+.product-image-thumb {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  filter: none;
+}
+
+.product-image-empty {
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font: var(--small);
+}
+
+.concept-tag {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  background: rgb(246 245 242 / 0.92);
+  color: var(--ink-2);
+  font: 500 12px/18px var(--font);
+}

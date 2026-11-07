@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" role="img" aria-labelledby="title desc">
+  <title id="title">OMEGA Performance Additives - Back Label Prototype</title>
+  <desc id="desc">Matte black back label layout prototype. Directions, storage, and warnings are structural placeholders only. Not for production.</desc>
+  <defs>
+    <linearGradient id="goldB" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8D48A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="600" rx="28" fill="#0B0B0B"/>
+  <rect x="18" y="18" width="364" height="564" rx="18" fill="none" stroke="#2A2A2A" stroke-width="1.5"/>
+
+  <text x="40" y="64" font-family="Syne, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3" fill="url(#goldB)">DIRECTIONS</text>
+  <text x="40" y="90" font-family="DM Sans, Arial, sans-serif" font-size="11" fill="#888">Pending product validation</text>
+  <rect x="40" y="108" width="280" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="126" width="240" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="144" width="260" height="8" fill="#2A2A2A"/>
+
+  <rect x="40" y="172" width="72" height="2" fill="#00A8E8"/>
+
+  <text x="40" y="210" font-family="Syne, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3" fill="url(#goldB)">STORAGE</text>
+  <text x="40" y="236" font-family="DM Sans, Arial, sans-serif" font-size="11" fill="#888">Draft only - not SDS clearance</text>
+  <rect x="40" y="254" width="280" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="272" width="220" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="290" width="250" height="8" fill="#2A2A2A"/>
+
+  <rect x="40" y="318" width="72" height="2" fill="#00A8E8"/>
+
+  <text x="40" y="356" font-family="Syne, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3" fill="url(#goldB)">WARNINGS</text>
+  <text x="40" y="382" font-family="DM Sans, Arial, sans-serif" font-size="11" fill="#888">Petrol only - hazard labelling pending</text>
+  <rect x="40" y="400" width="280" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="418" width="260" height="8" fill="#2A2A2A"/>
+  <rect x="40" y="436" width="240" height="8" fill="#2A2A2A"/>
+
+  <text x="40" y="500" font-family="DM Sans, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="2" fill="#F4F4F0">PETROL ONLY</text>
+  <text x="40" y="540" font-family="DM Sans, Arial, sans-serif" font-size="9" letter-spacing="1.2" fill="#777">DESIGN CONCEPT - NOT FOR PRODUCTION</text>
+  <text x="40" y="558" font-family="DM Sans, Arial, sans-serif" font-size="9" fill="#555">No certifications, barcodes, or hazard codes implied</text>
+</svg>

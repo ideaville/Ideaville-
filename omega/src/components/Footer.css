@@ -1,0 +1,10 @@
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding: var(--space-5) 0;
+}
+
+.footer-bar {
+  font: var(--small);
+  color: var(--ink-2);
+}

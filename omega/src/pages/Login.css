@@ -1,0 +1,17 @@
+.login-shell {
+  max-width: var(--form-max);
+}
+
+.login-page h1 {
+  margin-bottom: var(--space-5);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-back {
+  margin-top: var(--space-5);
+}
