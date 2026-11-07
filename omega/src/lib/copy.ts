@@ -22,6 +22,16 @@ export const copy = {
   signInError: 'Email or password is incorrect.',
   /** Non-credential failures (5xx, network, malformed) — never claim wrong password. */
   signInFailed: 'Sign-in could not be completed. Try again.',
+  recoveryTitle: 'Owner recovery',
+  recoveryHelp:
+    'One-use staging recovery for the existing owner admin. Enter the recovery authorization from Vercel, then your new password. You will sign in normally afterward.',
+  recoveryAuthorization: 'Recovery authorization',
+  recoveryNewPassword: 'New password',
+  recoveryConfirmPassword: 'Confirm new password',
+  recoverySubmit: 'Update password',
+  recoveryFailed: 'Recovery could not be completed.',
+  recoverySuccess: 'Password updated. Sign in with your new password.',
+  recoveryLink: 'Owner recovery',
   preview: 'Preview',
   footer: 'Ideaville Enterprise · Nigeria',
   safetyPetrol: 'Petrol engines only — not diesel, aviation, or marine two-stroke.',

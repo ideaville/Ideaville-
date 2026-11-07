@@ -21,6 +21,11 @@ export const api = {
   catalog: () => request<{ settings: Record<string, unknown>; products: CatalogProduct[] }>('/api/catalog'),
   login: (email: string, password: string) =>
     request<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  ownerRecovery: (input: { authorization: string; password: string; password_confirm: string }) =>
+    request<{ ok: true }>('/api/auth/owner-recovery', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST', body: '{}' }),
   me: () => request<{ user: AuthUser }>('/api/auth/me'),
   adminOverview: () => request<AdminOverview>('/api/admin/overview'),

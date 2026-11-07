@@ -5,6 +5,7 @@ import { Admin } from './pages/Admin'
 import { Distributor } from './pages/Distributor'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
+import { Recover } from './pages/Recover'
 import { Network } from './pages/Network'
 import { Order } from './pages/Order'
 import { Shop } from './pages/Shop'
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/shop" element={<Shop />} />
           <Route path="/order" element={<Order />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/recover" element={<Recover />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/distributor" element={<Distributor />} />
           <Route path="/network" element={<Network />} />

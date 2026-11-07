@@ -6,6 +6,7 @@ import { logAuthLoginOutcome, newLoginRequestId } from './authLoginTelemetry.ts'
 import { AppError, badRequest } from './errors.ts'
 import { newId, nowIso } from './crypto.ts'
 import { createAccount, login, logout, maybeBootstrapAdmin, requireRole, requireUser } from './services/auth.ts'
+import { executeOwnerPasswordRecovery } from './services/ownerRecovery.ts'
 import { seedHistoricDrafts } from './seed.ts'
 import { getStore } from './store/index.ts'
 
@@ -112,6 +113,26 @@ export function createApp() {
       logAuthLoginOutcome({ rid, outcome: 'server_exception' })
       throw err
     }
+  })
+
+  app.post('/api/auth/owner-recovery', async (c) => {
+    const store = await getStore()
+    let body: { authorization?: string; password?: string; password_confirm?: string }
+    try {
+      body = await c.req.json()
+    } catch {
+      throw badRequest('Invalid recovery request')
+    }
+    const result = await executeOwnerPasswordRecovery(store, body, {
+      origin: c.req.header('origin'),
+      referer: c.req.header('referer'),
+      host: c.req.header('host'),
+      forwardedHost: c.req.header('x-forwarded-host'),
+      forwardedProto: c.req.header('x-forwarded-proto'),
+      clientKey: c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('host') || 'unknown',
+      allowedOrigins,
+    })
+    return c.json(result)
   })
 
   app.post('/api/auth/logout', async (c) => {

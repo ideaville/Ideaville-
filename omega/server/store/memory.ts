@@ -1,4 +1,4 @@
-import { badRequest, conflict, forbidden, notFound } from '../errors.ts'
+import { badRequest, conflict, forbidden, notFound, unavailable } from '../errors.ts'
 import { newId, nowIso } from '../crypto.ts'
 import {
   DEFAULT_SETTINGS,
@@ -39,6 +39,7 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
   const terms = new Map<string, CommercialTerm>()
   const paymentEvents: PaymentEvent[] = []
   const referrals = new Map<string, Referral>()
+  let ownerRecoveryClaim: { status: 'consumed'; fp: string; at: string } | null = null
 
   let chain: Promise<unknown> = Promise.resolve()
   function exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -94,6 +95,31 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       return [...users.values()].map(clone)
     },
 
+    async applyOwnerPasswordRecovery(input) {
+      return exclusive(() => {
+        if (ownerRecoveryClaim?.status === 'consumed' && ownerRecoveryClaim.fp === input.recoveryFingerprint) {
+          return { applied: false }
+        }
+        const user = users.get(input.adminId)
+        if (!user || user.role !== 'admin' || !user.active) {
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
+        users.set(input.adminId, { ...user, password_hash: input.passwordHash })
+        for (const [sid, session] of [...sessions.entries()]) {
+          if (session.user_id === input.adminId) {
+            sessions.delete(sid)
+            sessionsByHash.delete(session.token_hash)
+          }
+        }
+        ownerRecoveryClaim = {
+          status: 'consumed',
+          fp: input.recoveryFingerprint,
+          at: input.consumedAt,
+        }
+        return { applied: true }
+      })
+    },
+
     async createSession(session) {
       sessions.set(session.id, session)
       sessionsByHash.set(session.token_hash, session.id)
@@ -120,6 +146,15 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       if (!session) return
       sessions.delete(id)
       sessionsByHash.delete(session.token_hash)
+    },
+
+    async deleteSessionsForUser(userId) {
+      for (const [sid, session] of [...sessions.entries()]) {
+        if (session.user_id === userId) {
+          sessions.delete(sid)
+          sessionsByHash.delete(session.token_hash)
+        }
+      }
     },
 
     async createDistributor(d) {

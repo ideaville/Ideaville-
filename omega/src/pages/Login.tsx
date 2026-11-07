@@ -76,6 +76,8 @@ export function Login() {
         </form>
         <p className="meta login-back">
           <Link to="/shop">{copy.shop}</Link>
+          {' · '}
+          <Link to="/recover">{copy.recoveryLink}</Link>
         </p>
       </div>
     </main>

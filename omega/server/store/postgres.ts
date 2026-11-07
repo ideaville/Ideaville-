@@ -19,6 +19,7 @@ import {
 } from '../types.ts'
 import { migratePostgres } from './migrate.ts'
 import { OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
+import { OWNER_RECOVERY_SETTINGS_KEY } from '../ownerRecoveryConfig.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
 
 export { OMEGA_SEARCH_PATH, OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
@@ -66,9 +67,11 @@ function createFailClosedStore(
     findUserByEmail: fail,
     findUserById: fail,
     listUsers: fail,
+    applyOwnerPasswordRecovery: fail,
     createSession: fail,
     findSessionByTokenHash: fail,
     deleteSession: fail,
+    deleteSessionsForUser: fail,
     createDistributor: fail,
     listDistributors: fail,
     getDistributor: fail,
@@ -209,6 +212,40 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
       return sql<User>`SELECT * FROM users ORDER BY created_at`
     },
 
+    async applyOwnerPasswordRecovery(input) {
+      const claimValue = {
+        status: 'consumed',
+        fp: input.recoveryFingerprint,
+        at: input.consumedAt,
+      }
+      const applied = await sql.begin(async (tx) => {
+        // Race-safe one-use: succeed only if unset or prior consumption used a different fingerprint
+        // (owner rotated recovery secret). Same fingerprint already consumed → no row.
+        const claimed = await tx<{ key: string }>`
+          INSERT INTO settings (key, value, updated_at)
+          VALUES (${OWNER_RECOVERY_SETTINGS_KEY}, ${tx.json(claimValue as never)}, NOW())
+          ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value, updated_at = NOW()
+            WHERE (settings.value->>'status') IS DISTINCT FROM 'consumed'
+               OR (settings.value->>'fp') IS DISTINCT FROM ${input.recoveryFingerprint}
+          RETURNING key`
+        if (!claimed[0]) return false
+
+        const updated = await tx<{ id: string }>`
+          UPDATE users
+          SET password_hash = ${input.passwordHash}
+          WHERE id = ${input.adminId}::uuid AND role = 'admin' AND active = TRUE
+          RETURNING id`
+        if (!updated[0]) {
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
+
+        await tx`DELETE FROM sessions WHERE user_id = ${input.adminId}::uuid`
+        return true
+      })
+      return { applied: Boolean(applied) }
+    },
+
     async createSession(session) {
       const rows = await sql<Session>`
         INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at)
@@ -245,6 +282,10 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
 
     async deleteSession(id) {
       await sql`DELETE FROM sessions WHERE id = ${id}`
+    },
+
+    async deleteSessionsForUser(userId) {
+      await sql`DELETE FROM sessions WHERE user_id = ${userId}::uuid`
     },
 
     async createDistributor(d) {
