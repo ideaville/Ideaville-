@@ -1,5 +1,12 @@
 export type ApiError = { error: string; code?: string }
 
+/** Fired after login/logout so every useSession() (e.g. the header) refetches. */
+export const SESSION_CHANGED_EVENT = 'omega:session-changed'
+
+function notifySessionChanged() {
+  window.dispatchEvent(new Event(SESSION_CHANGED_EVENT))
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -20,8 +27,14 @@ export const api = {
   status: () => request<{ readiness: { persistence: string; migrated: boolean; message: string }; settings: unknown }>('/api/status'),
   catalog: () => request<{ settings: Record<string, unknown>; products: CatalogProduct[] }>('/api/catalog'),
   login: (email: string, password: string) =>
-    request<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST', body: '{}' }),
+    request<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }).then(
+      (res) => {
+        notifySessionChanged()
+        return res
+      },
+    ),
+  logout: () =>
+    request<{ ok: boolean }>('/api/auth/logout', { method: 'POST', body: '{}' }).finally(notifySessionChanged),
   me: () => request<{ user: AuthUser }>('/api/auth/me'),
   adminOverview: () => request<AdminOverview>('/api/admin/overview'),
   patchSettings: (patch: Record<string, boolean>) =>

@@ -282,15 +282,18 @@ export function createApp() {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
     await seedHistoricDrafts(store)
-    const [settings, products, distributors, orders, batches, terms, referrals] = await Promise.all([
+    const [settings, rawProducts, prices, distributors, orders, batches, terms, referrals] = await Promise.all([
       store.getSettings(),
       store.listProducts(),
+      store.listPrices(),
       store.listDistributors(),
       store.listOrders(),
       store.listBatches(),
       store.listTerms(),
       store.listReferrals(),
     ])
+    // Admin catalogue shows draft/active prices per product (admin-only; never public sale prices).
+    const products = rawProducts.map((p) => ({ ...p, prices: prices.filter((price) => price.product_id === p.id) }))
     return c.json({ settings, products, distributors, orders, batches, terms, referrals })
   })
 
