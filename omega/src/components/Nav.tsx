@@ -23,7 +23,7 @@ export function Nav() {
         Skip to content
       </a>
       <div className="shell nav-inner">
-        <NavLink to="/" className="nav-brand brand-mark" end aria-label="OMEGA home">
+        <NavLink to="/shop" className="nav-brand brand-mark" end aria-label="OMEGA shop">
           {copy.brand}
         </NavLink>
         <StatusChip status={status} />

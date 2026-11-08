@@ -19,7 +19,9 @@ export default function App() {
       </div>
       <div id="main">
         <Routes>
-          <Route path="/" element={<Home />} />
+          {/* Preview store testing: land on usable shop; brand home remains at /home. */}
+          <Route path="/" element={<Navigate to="/shop" replace />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/order" element={<Order />} />
           <Route path="/login" element={<Login />} />
@@ -29,7 +31,7 @@ export default function App() {
           <Route path="/network" element={<Network />} />
           <Route path="/referrals" element={<Navigate to="/network" replace />} />
           <Route path="/club" element={<Navigate to="/network" replace />} />
-          <Route path="/label" element={<Navigate to="/" replace />} />
+          <Route path="/label" element={<Navigate to="/home" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

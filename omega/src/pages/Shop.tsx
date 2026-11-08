@@ -5,6 +5,7 @@ import { StatusLine } from '../components/StatusLine'
 import { api, formatNgn, type CatalogProduct } from '../lib/api'
 import { copy } from '../lib/copy'
 import { deriveAppStatus } from '../lib/appStatus'
+import { canPreviewBrowse, displayUnitKobo } from '../lib/previewStore'
 import './Shop.css'
 
 export function Shop() {
@@ -19,7 +20,6 @@ export function Shop() {
         const app = deriveAppStatus(status, catalog)
         setUnavailable(app.database === 'not_connected')
         setCanOrder(app.canOrder)
-        // Public catalogue lists products but never shows unapproved sale figures — Price TBC only.
         setProducts(catalog.products)
       })
       .catch((err: Error) => {
@@ -27,6 +27,8 @@ export function Shop() {
         setUnavailable(true)
       })
   }, [])
+
+  const previewMode = !canOrder
 
   return (
     <main className="section shop-page">
@@ -46,34 +48,35 @@ export function Shop() {
           </p>
         ) : null}
 
-        {!unavailable && !canOrder && products.length > 0 ? (
-          <StatusLine tone="warn">{copy.ordersOff}</StatusLine>
+        {!unavailable && previewMode && products.length > 0 ? (
+          <StatusLine tone="warn">{copy.previewStoreHelp}</StatusLine>
         ) : null}
 
         {!unavailable && products.length > 0 ? (
           <ul className="product-grid">
             {products.map((product) => {
-              const livePrice = product.approved_for_sale
-                ? product.prices.find((p) => p.channel === 'retail' && p.status === 'active')?.amount_kobo
-                : undefined
-              const orderable = canOrder && product.saleable && product.approved_for_sale && livePrice != null
+              const price = displayUnitKobo(product, 'retail', canOrder)
+              const browseable = canPreviewBrowse(product, canOrder)
               return (
                 <li key={product.id}>
                   <article className="product-card" data-testid={`product-card-${product.sku}`}>
                     <ProductImage src="/product-concept.jpg" ratio="1-1" width={480} height={480} lazy />
                     <h2>{product.name}</h2>
                     <p className="mono meta">{product.volume_ml != null ? `${product.volume_ml} ml` : '—'}</p>
-                    <p className="mono meta" data-testid={`price-${product.sku}`}>{livePrice != null ? formatNgn(livePrice) : copy.priceTbc}</p>
+                    <p className="mono meta" data-testid={`price-${product.sku}`}>
+                      {price != null ? formatNgn(price.amount_kobo) : copy.priceTbc}
+                    </p>
+                    {price?.preview ? <p className="meta">{copy.previewPrice}</p> : null}
                     <Link
                       to={`/order?sku=${encodeURIComponent(product.sku)}`}
-                      className={`btn btn-secondary${orderable ? '' : ' is-disabled'}`}
+                      className={`btn btn-secondary${browseable ? '' : ' is-disabled'}`}
                       data-testid={`btn-order-${product.sku}`}
-                      aria-disabled={!orderable}
+                      aria-disabled={!browseable}
                       onClick={(e) => {
-                        if (!orderable) e.preventDefault()
+                        if (!browseable) e.preventDefault()
                       }}
                     >
-                      {copy.order}
+                      {previewMode && browseable ? copy.previewReview : copy.order}
                     </Link>
                   </article>
                 </li>

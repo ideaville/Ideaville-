@@ -18,8 +18,14 @@ export const copy = {
   noOrders: 'No orders.',
   databaseOff: 'Database not connected.',
   ordersOff: 'Orders are off in preview.',
+  previewStoreHelp:
+    'Preview storefront — browse and review only. No payment, stock, email, commission, or live order is created.',
+  previewPrice: 'Preview price (draft)',
+  previewReview: 'Preview review',
+  previewReviewed: 'Preview review complete — no order was placed.',
   orderPlaced: 'Order placed',
   orderNoContact: 'Contact details are not collected yet in this prototype. Payment is recorded by the admin.',
+
   tradePrice: 'Trade price',
   signInUnavailable: 'Sign-in unavailable.',
   signInError: 'Email or password is incorrect.',
