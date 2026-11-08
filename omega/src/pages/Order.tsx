@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ProductImage } from '../components/ProductImage'
 import { StatusLine } from '../components/StatusLine'
-import { api, type CatalogProduct } from '../lib/api'
+import { api, formatNgn, type CatalogProduct } from '../lib/api'
+import { useSession } from '../hooks/useSession'
 import { copy } from '../lib/copy'
 import { deriveAppStatus } from '../lib/appStatus'
 import './Order.css'
@@ -18,6 +19,10 @@ export function Order() {
   const [qty, setQty] = useState(1)
   const [canOrder, setCanOrder] = useState(false)
   const [error, setError] = useState('')
+  const [placing, setPlacing] = useState(false)
+  const [placed, setPlaced] = useState<{ ref: string; total: number } | null>(null)
+  const { user } = useSession()
+  const channel: 'retail' | 'trade' = user?.role === 'distributor' ? 'trade' : 'retail'
 
   useEffect(() => {
     Promise.all([api.catalog(), api.status()])
@@ -30,6 +35,23 @@ export function Order() {
   }, [sku])
 
   const size = useMemo(() => (product?.volume_ml != null ? `${product.volume_ml} ml` : '—'), [product])
+  const unitKobo = product?.prices.find((p) => p.channel === channel && p.status === 'active')?.amount_kobo ?? null
+  const orderable = canOrder && !!product && product.saleable && product.approved_for_sale && unitKobo != null
+
+  async function onRequest() {
+    if (!product) return
+    setError('')
+    setPlaced(null)
+    setPlacing(true)
+    try {
+      const { order } = await api.placeOrder({ channel, lines: [{ product_id: product.id, quantity: qty }] })
+      setPlaced({ ref: order.id.slice(0, 8), total: Number(order.total_kobo) })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Order failed')
+    } finally {
+      setPlacing(false)
+    }
+  }
 
   return (
     <main className="section order-page">
@@ -79,18 +101,35 @@ export function Order() {
 
         <dl className="order-summary">
           <div>
-            <dt>Price</dt>
-            <dd className="mono">{copy.priceTbc}</dd>
+            <dt>{channel === 'trade' ? copy.tradePrice : 'Price'}</dt>
+            <dd className="mono" data-testid="order-unit-price">{unitKobo != null ? formatNgn(unitKobo) : copy.priceTbc}</dd>
           </div>
+          {unitKobo != null ? (
+            <div>
+              <dt>Total</dt>
+              <dd className="mono" data-testid="order-total">{formatNgn(unitKobo * qty)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Payment</dt>
-            <dd className="mono">Off</dd>
+            <dd className="mono">{canOrder ? 'Recorded by admin' : 'Off'}</dd>
           </div>
         </dl>
 
         {!canOrder ? <StatusLine tone="warn">{copy.ordersOff}</StatusLine> : null}
 
-        <button type="button" className="btn btn-primary" data-testid="btn-request-order" disabled={!canOrder || !product}>
+        {placed ? (
+          <StatusLine tone="neutral">{`${copy.orderPlaced}: ${placed.ref} · ${formatNgn(placed.total)}`}</StatusLine>
+        ) : null}
+        {orderable && channel === 'retail' ? <p className="meta">{copy.orderNoContact}</p> : null}
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          data-testid="btn-request-order"
+          disabled={!orderable || placing}
+          onClick={onRequest}
+        >
           {copy.requestOrder}
         </button>
 

@@ -123,8 +123,16 @@ export const pgTypes = {
   },
 }
 
+/** Idempotent migrations (IF NOT EXISTS) emit "already exists, skipping" notices on every boot. */
+const IDEMPOTENT_NOTICE_CODES = new Set(['42P06', '42P07', '42701', '42710'])
+
+export function logNotice(notice: { code?: string; message?: string }) {
+  if (notice.code && IDEMPOTENT_NOTICE_CODES.has(notice.code)) return
+  console.log('[omega] postgres notice:', notice.code ?? '', notice.message ?? '')
+}
+
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {
-  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20, types: pgTypes })
+  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20, types: pgTypes, onnotice: logNotice })
   await migratePostgres(sql)
 
   async function requireAdmin(actor: AuthUser) {
@@ -540,6 +548,30 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
         const orderRows = await tx<Order>`SELECT * FROM orders WHERE id=${input.orderId} FOR UPDATE`
         if (!orderRows[0]) throw notFound('Order not found')
         const order = orderRows[0]
+        if (order.fulfillment_status === 'delivered' || order.fulfillment_status === 'cancelled') {
+          throw conflict('Order is already closed', 'order_closed')
+        }
+        if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'shipped') {
+          throw conflict('Shipped orders cannot be cancelled', 'order_shipped')
+        }
+        if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'allocated') {
+          // Release any stock still reserved for this order.
+          const reserves = await tx<{ batch_id: string; delta_reserved: number }>`
+            SELECT batch_id, delta_reserved FROM stock_movements
+            WHERE order_id=${order.id} AND reason='order_reserve' FOR UPDATE`
+          for (const r of reserves) {
+            const batches = await tx<StockBatch>`SELECT * FROM stock_batches WHERE id=${r.batch_id} FOR UPDATE`
+            const batch = batches[0]
+            if (!batch) continue
+            const qty = Number(r.delta_reserved)
+            const reserved = batch.qty_reserved - qty
+            if (reserved < 0) throw conflict('Stock integrity error on cancel', 'stock_conflict')
+            await tx`UPDATE stock_batches SET qty_reserved=${reserved} WHERE id=${batch.id}`
+            await tx`
+              INSERT INTO stock_movements (id, batch_id, delta_on_hand, delta_reserved, reason, order_id, actor_user_id, created_at)
+              VALUES (${newId()}, ${batch.id}, 0, ${-qty}, 'order_cancel_release', ${order.id}, ${input.actor.id}, ${nowIso()})`
+          }
+        }
         if (
           (input.fulfillmentStatus === 'shipped' || input.fulfillmentStatus === 'delivered') &&
           order.fulfillment_status === 'allocated'
@@ -561,7 +593,8 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
               VALUES (${newId()}, ${batch.id}, ${-qty}, ${-qty}, 'order_ship', ${order.id}, ${input.actor.id}, ${nowIso()})`
           }
         }
-        const status = input.fulfillmentStatus === 'delivered' ? 'fulfilled' : order.status
+        const status =
+          input.fulfillmentStatus === 'delivered' ? 'fulfilled' : input.fulfillmentStatus === 'cancelled' ? 'cancelled' : order.status
         const updated = await tx<Order>`
           UPDATE orders SET fulfillment_status=${input.fulfillmentStatus}, status=${status}, updated_at=NOW()
           WHERE id=${order.id} RETURNING *`

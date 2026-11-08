@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { StatusLine } from '../components/StatusLine'
 import { api, formatNgn, type AdminOverview, type AuthUser } from '../lib/api'
 import { copy } from '../lib/copy'
+import { CatalogueActions, DistributorsPanel, OrdersPanel, ProductSaleControls, StockPanel, TermsPanel, type RunAction } from './AdminActions'
 import './Admin.css'
 
 const GATES = [
@@ -83,6 +84,20 @@ export function Admin() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')
+    }
+  }
+
+  const run: RunAction = async (action, success) => {
+    setMessage('')
+    setError('')
+    try {
+      await action()
+      setMessage(success)
+      await load()
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Action failed')
+      return false
     }
   }
 
@@ -173,6 +188,7 @@ export function Admin() {
 
         {tab === 'catalogue' ? (
           <section aria-label={copy.catalogue}>
+            <CatalogueActions products={products} run={run} />
             <div className="table-wrap">
               <table className="data-table stack-mobile" data-testid="table-catalogue">
                 <thead>
@@ -181,13 +197,14 @@ export function Admin() {
                     <th scope="col">SKU</th>
                     <th scope="col">Size</th>
                     <th scope="col">Status</th>
-                    <th scope="col">Draft price</th>
+                    <th scope="col">Prices</th>
+                    <th scope="col">Sale</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((row) => (
                     <tr key={String(row.id)}>
-                      <td data-label="Name">{String(row.name)}</td>
+                      <td data-label="Name" className="cell-wrap">{String(row.name)}</td>
                       <td data-label="SKU" className="mono">
                         {String(row.sku)}
                       </td>
@@ -195,43 +212,34 @@ export function Admin() {
                         {row.volume_ml != null ? `${row.volume_ml} ml` : '—'}
                       </td>
                       <td data-label="Status">{row.approved_for_sale ? 'Published' : 'Draft'}</td>
-                      <td data-label="Draft price" className="mono">
-                        {priceLabel(prices, String(row.id))}
+                      <td data-label="Prices" className="mono price-cell">
+                        <span>Retail {priceLabel(prices, String(row.id), 'retail')}</span>
+                        <span>Trade {priceLabel(prices, String(row.id), 'trade')}</span>
+                      </td>
+                      <td data-label="Sale">
+                        <ProductSaleControls product={row} run={run} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="meta">Historic draft prices are admin-only and never shown as live sale prices.</p>
+            <p className="meta">
+              Draft prices are admin-only and never shown as live sale prices. Checkout also needs all four Activation switches and stock.
+            </p>
           </section>
         ) : null}
 
         {tab === 'stock' ? (
-          <DataTable
-            testId="table-stock"
-            title={copy.stock}
-            rows={data.batches as Record<string, unknown>[]}
-            keys={['batch_code', 'product_id', 'qty_on_hand', 'qty_reserved']}
-          />
+          <StockPanel products={products} batches={data.batches as Record<string, unknown>[]} run={run} />
         ) : null}
 
         {tab === 'orders' ? (
-          <DataTable
-            testId="table-orders"
-            title={copy.orders}
-            rows={data.orders as Record<string, unknown>[]}
-            keys={['id', 'channel', 'status', 'payment_status', 'total_kobo']}
-          />
+          <OrdersPanel orders={data.orders as Record<string, unknown>[]} distributors={data.distributors as Record<string, unknown>[]} run={run} />
         ) : null}
 
         {tab === 'distributors' ? (
-          <DataTable
-            testId="table-distributors"
-            title={copy.distributors}
-            rows={data.distributors as Record<string, unknown>[]}
-            keys={['code', 'name', 'status', 'referral_code', 'sponsor_id']}
-          />
+          <DistributorsPanel distributors={data.distributors as Record<string, unknown>[]} run={run} />
         ) : null}
 
         {tab === 'referrals' ? (
@@ -244,12 +252,7 @@ export function Admin() {
         ) : null}
 
         {tab === 'terms' ? (
-          <DataTable
-            testId="table-terms"
-            title={copy.terms}
-            rows={data.terms as Record<string, unknown>[]}
-            keys={['kind', 'rate_bps', 'status']}
-          />
+          <TermsPanel terms={data.terms as Record<string, unknown>[]} distributors={data.distributors as Record<string, unknown>[]} run={run} />
         ) : null}
 
         <button
@@ -322,11 +325,11 @@ function flattenPrices(products: Array<Record<string, unknown>>) {
   return map
 }
 
-function priceLabel(map: Map<string, Array<Record<string, unknown>>>, productId: string) {
+function priceLabel(map: Map<string, Array<Record<string, unknown>>>, productId: string, channel: 'retail' | 'trade') {
   const list = map.get(productId) ?? []
-  const draft = list.find((p) => p.status === 'draft' && p.channel === 'retail')
-  const active = list.find((p) => p.status === 'active' && p.channel === 'retail')
-  const price = draft ?? active
+  const active = list.find((p) => p.status === 'active' && p.channel === channel)
+  const draft = list.find((p) => p.status === 'draft' && p.channel === channel)
+  const price = active ?? draft
   if (!price) return '—'
   const amount = Number(price.amount_kobo)
   const tag = String(price.status)

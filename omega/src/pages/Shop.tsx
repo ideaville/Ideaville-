@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProductImage } from '../components/ProductImage'
 import { StatusLine } from '../components/StatusLine'
-import { api, type CatalogProduct } from '../lib/api'
+import { api, formatNgn, type CatalogProduct } from '../lib/api'
 import { copy } from '../lib/copy'
 import { deriveAppStatus } from '../lib/appStatus'
 import './Shop.css'
@@ -53,14 +53,17 @@ export function Shop() {
         {!unavailable && products.length > 0 ? (
           <ul className="product-grid">
             {products.map((product) => {
-              const orderable = canOrder && product.saleable && product.approved_for_sale
+              const livePrice = product.approved_for_sale
+                ? product.prices.find((p) => p.channel === 'retail' && p.status === 'active')?.amount_kobo
+                : undefined
+              const orderable = canOrder && product.saleable && product.approved_for_sale && livePrice != null
               return (
                 <li key={product.id}>
                   <article className="product-card" data-testid={`product-card-${product.sku}`}>
                     <ProductImage src="/product-concept.jpg" ratio="1-1" width={480} height={480} lazy />
                     <h2>{product.name}</h2>
                     <p className="mono meta">{product.volume_ml != null ? `${product.volume_ml} ml` : '—'}</p>
-                    <p className="mono meta">{copy.priceTbc}</p>
+                    <p className="mono meta" data-testid={`price-${product.sku}`}>{livePrice != null ? formatNgn(livePrice) : copy.priceTbc}</p>
                     <Link
                       to={`/order?sku=${encodeURIComponent(product.sku)}`}
                       className={`btn btn-secondary${orderable ? '' : ' is-disabled'}`}

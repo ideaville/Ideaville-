@@ -235,6 +235,14 @@ a:focus-visible {
   gap: var(--space-4);
   border-bottom: 1px solid var(--line);
   margin-bottom: var(--space-5);
+  /* Many tabs on narrow screens: scroll the strip, never the page. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs .tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .tab {
