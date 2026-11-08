@@ -1,5 +1,12 @@
 export type ApiError = { error: string; code?: string }
 
+/** Fired after login/logout so every useSession() (e.g. the header) refetches. */
+export const SESSION_CHANGED_EVENT = 'omega:session-changed'
+
+function notifySessionChanged() {
+  window.dispatchEvent(new Event(SESSION_CHANGED_EVENT))
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -16,12 +23,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data
 }
 
+function send(method: 'POST' | 'PATCH', path: string, body: unknown) {
+  return request<Record<string, unknown>>(path, { method, body: JSON.stringify(body) })
+}
+
 export const api = {
   status: () => request<{ readiness: { persistence: string; migrated: boolean; message: string }; settings: unknown }>('/api/status'),
   catalog: () => request<{ settings: Record<string, unknown>; products: CatalogProduct[] }>('/api/catalog'),
   login: (email: string, password: string) =>
-    request<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST', body: '{}' }),
+    request<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }).then(
+      (res) => {
+        notifySessionChanged()
+        return res
+      },
+    ),
+  logout: () =>
+    request<{ ok: boolean }>('/api/auth/logout', { method: 'POST', body: '{}' }).finally(notifySessionChanged),
   me: () => request<{ user: AuthUser }>('/api/auth/me'),
   adminOverview: () => request<AdminOverview>('/api/admin/overview'),
   patchSettings: (patch: Record<string, boolean>) =>
@@ -29,6 +46,29 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(patch),
     }),
+  createProduct: (input: { sku: string; name: string; kind: 'bottle' | 'sample' | 'other'; volume_ml: number | null; description: string }) =>
+    send('POST', '/api/admin/products', input),
+  updateProduct: (id: string, patch: { saleable?: boolean; approved_for_sale?: boolean; channel_eligibility?: { retail: boolean; trade: boolean } }) =>
+    send('PATCH', `/api/admin/products/${encodeURIComponent(id)}`, patch),
+  createPrice: (input: { product_id: string; channel: 'retail' | 'trade'; amount_kobo: number; label: string; activate: boolean }) =>
+    send('POST', '/api/admin/prices', input),
+  createBatch: (input: { product_id: string; batch_code: string; qty_on_hand: number; notes: string }) =>
+    send('POST', '/api/admin/stock/batches', input),
+  adjustStock: (input: { batch_id: string; delta_on_hand: number; reason: string }) => send('POST', '/api/admin/stock/adjust', input),
+  setPayment: (orderId: string, input: { payment_status: 'paid' | 'failed' | 'refunded' | 'pending_verification'; note: string }) =>
+    send('POST', `/api/admin/orders/${encodeURIComponent(orderId)}/payment`, input),
+  setFulfillment: (orderId: string, input: { fulfillment_status: 'shipped' | 'delivered' | 'cancelled' }) =>
+    send('POST', `/api/admin/orders/${encodeURIComponent(orderId)}/fulfillment`, input),
+  createDistributor: (input: { name: string; code: string; sponsor_id: string | null; notes: string }) =>
+    send('POST', '/api/admin/distributors', input),
+  updateDistributor: (id: string, patch: { status: 'pending_terms' | 'active' | 'suspended' }) =>
+    send('PATCH', `/api/admin/distributors/${encodeURIComponent(id)}`, patch),
+  createUser: (input: { email: string; password: string; role: 'distributor'; distributor_id: string }) =>
+    send('POST', '/api/admin/users', input),
+  createTerm: (input: { kind: 'wholesale_margin' | 'commission'; distributor_id: string | null; rate_bps: number | null; notes: string; activate: boolean }) =>
+    send('POST', '/api/admin/terms', input),
+  placeOrder: (input: { channel: 'retail' | 'trade'; lines: Array<{ product_id: string; quantity: number }> }) =>
+    request<{ order: { id: string; total_kobo: number; channel: string } }>('/api/orders', { method: 'POST', body: JSON.stringify(input) }),
   distributorNetwork: () => request<DistributorNetwork>('/api/distributor/network'),
   createReferral: (input: { prospect_label: string; notes?: string }) =>
     request<{ referral: ReferralRecord }>('/api/distributor/referrals', {

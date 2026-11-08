@@ -34,3 +34,89 @@
 .admin-page .meta {
   margin-top: var(--space-3);
 }
+
+/* Admin actions */
+.admin-actions {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.admin-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.admin-panel > summary {
+  cursor: pointer;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.admin-panel[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-panel-body {
+  padding: var(--space-4);
+}
+
+.admin-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 560px;
+}
+
+.admin-form .btn {
+  justify-self: start;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.row-actions .btn {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font: var(--small);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--small);
+  min-height: 36px;
+}
+
+.admin-page td select {
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 var(--space-2);
+}
+
+.row-actions-stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.price-cell span {
+  display: block;
+  white-space: nowrap;
+}
+
+.admin-page .data-table td.cell-wrap {
+  white-space: normal;
+  min-width: 160px;
+}

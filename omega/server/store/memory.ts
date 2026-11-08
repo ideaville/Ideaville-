@@ -2,7 +2,6 @@ import { badRequest, conflict, forbidden, notFound } from '../errors.ts'
 import { newId, nowIso } from '../crypto.ts'
 import {
   DEFAULT_SETTINGS,
-  type AuthUser,
   type CommercialTerm,
   type Distributor,
   type Order,
@@ -423,7 +422,37 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       if (input.actor.role !== 'admin') throw forbidden()
       const order = orders.get(input.orderId)
       if (!order) throw notFound('Order not found')
+      if (order.fulfillment_status === 'delivered' || order.fulfillment_status === 'cancelled') {
+        throw conflict('Order is already closed', 'order_closed')
+      }
+      if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'shipped') {
+        throw conflict('Shipped orders cannot be cancelled', 'order_shipped')
+      }
       const next = { ...order, fulfillment_status: input.fulfillmentStatus, updated_at: nowIso() }
+      if (input.fulfillmentStatus === 'cancelled') {
+        // Release any stock still reserved for this order.
+        if (order.fulfillment_status === 'allocated') {
+          for (const m of movements.filter((x) => x.order_id === order.id && x.reason === 'order_reserve')) {
+            const batch = batches.get(m.batch_id)
+            if (!batch) continue
+            const qty = m.delta_reserved
+            const reserved = batch.qty_reserved - qty
+            if (reserved < 0) throw conflict('Stock integrity error on cancel', 'stock_conflict')
+            batches.set(batch.id, { ...batch, qty_reserved: reserved })
+            movements.push({
+              id: newId(),
+              batch_id: batch.id,
+              delta_on_hand: 0,
+              delta_reserved: -qty,
+              reason: 'order_cancel_release',
+              order_id: order.id,
+              actor_user_id: input.actor.id,
+              created_at: nowIso(),
+            })
+          }
+        }
+        next.status = 'cancelled'
+      }
       if (input.fulfillmentStatus === 'shipped' || input.fulfillmentStatus === 'delivered') {
         // Convert reservation into on-hand decrement once when first shipping.
         if (order.fulfillment_status === 'allocated') {

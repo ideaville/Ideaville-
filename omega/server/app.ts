@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { cors } from 'hono/cors'
-import { AppError, badRequest } from './errors.ts'
+import { AppError, badRequest, conflict } from './errors.ts'
 import { newId, nowIso } from './crypto.ts'
 import { createAccount, login, logout, maybeBootstrapAdmin, requireRole, requireUser } from './services/auth.ts'
 import { seedHistoricDrafts } from './seed.ts'
@@ -282,15 +282,18 @@ export function createApp() {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
     await seedHistoricDrafts(store)
-    const [settings, products, distributors, orders, batches, terms, referrals] = await Promise.all([
+    const [settings, rawProducts, prices, distributors, orders, batches, terms, referrals] = await Promise.all([
       store.getSettings(),
       store.listProducts(),
+      store.listPrices(),
       store.listDistributors(),
       store.listOrders(),
       store.listBatches(),
       store.listTerms(),
       store.listReferrals(),
     ])
+    // Admin catalogue shows draft/active prices per product (admin-only; never public sale prices).
+    const products = rawProducts.map((p) => ({ ...p, prices: prices.filter((price) => price.product_id === p.id) }))
     return c.json({ settings, products, distributors, orders, batches, terms, referrals })
   })
 
@@ -409,8 +412,35 @@ export function createApp() {
     await requireRole(store, c.get('rawToken'), 'admin')
     const body = await c.req.json<Record<string, unknown>>()
     const patch: Record<string, unknown> = {}
-    for (const key of ['name', 'description', 'saleable', 'approved_for_sale', 'volume_ml', 'channel_eligibility'] as const) {
-      if (key in body) patch[key] = body[key]
+    if ('name' in body) {
+      if (typeof body.name !== 'string' || !body.name.trim()) throw badRequest('name must be a non-empty string')
+      patch.name = body.name.trim()
+    }
+    if ('description' in body) {
+      if (typeof body.description !== 'string') throw badRequest('description must be a string')
+      patch.description = body.description
+    }
+    for (const key of ['saleable', 'approved_for_sale'] as const) {
+      if (key in body) {
+        if (typeof body[key] !== 'boolean') throw badRequest(`${key} must be boolean`)
+        patch[key] = body[key]
+      }
+    }
+    if ('volume_ml' in body) {
+      const v = body.volume_ml
+      if (v !== null && !(typeof v === 'number' && Number.isInteger(v) && v > 0)) throw badRequest('volume_ml must be a positive integer or null')
+      patch.volume_ml = v
+    }
+    if ('channel_eligibility' in body) {
+      const ce = body.channel_eligibility as { retail?: unknown; trade?: unknown } | null
+      if (!ce || typeof ce.retail !== 'boolean' || typeof ce.trade !== 'boolean') {
+        throw badRequest('channel_eligibility must be { retail: boolean, trade: boolean }')
+      }
+      patch.channel_eligibility = { retail: ce.retail, trade: ce.trade }
+    }
+    const existing = await store.getProduct(c.req.param('id'))
+    if (existing?.kind === 'sample' && (patch.saleable === true || patch.approved_for_sale === true)) {
+      throw badRequest('Samples are non-saleable')
     }
     const product = await store.updateProduct(c.req.param('id'), patch)
     return c.json({ product })
@@ -488,6 +518,11 @@ export function createApp() {
     const admin = await requireRole(store, c.get('rawToken'), 'admin')
     const body = await c.req.json<{ payment_status?: 'paid' | 'failed' | 'refunded' | 'pending_verification'; note?: string }>()
     if (!body.payment_status) throw badRequest('payment_status required')
+    if (!['paid', 'failed', 'refunded', 'pending_verification'].includes(body.payment_status)) throw badRequest('Invalid payment_status')
+    const existing = await store.getOrder(c.req.param('id'))
+    if (existing?.order.fulfillment_status === 'cancelled' && body.payment_status !== 'refunded') {
+      throw conflict('Cancelled orders cannot take payment', 'order_cancelled')
+    }
     const kind =
       body.payment_status === 'paid'
         ? 'verified_paid'
