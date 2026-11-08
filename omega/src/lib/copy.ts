@@ -3,6 +3,7 @@ export const copy = {
   productLine: 'Performance additives',
   petrolOnly: 'Petrol only',
   shop: 'Shop',
+  demo: 'Demo',
   signIn: 'Sign in',
   signOut: 'Sign out',
   orders: 'Orders',

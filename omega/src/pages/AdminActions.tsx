@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { api, formatNgn } from '../lib/api'
+import { formatNgn } from '../lib/api'
+import { useApiClient } from '../demo/apiClient'
 import { nairaToKobo } from '../lib/money'
 
 /** Runs an admin write, reports success/failure, and reloads the overview. Resolves true on success. */
@@ -34,6 +35,7 @@ function productLabel(products: Row[], id: unknown) {
 /* ---------------- Catalogue ---------------- */
 
 export function CatalogueActions({ products, run }: { products: Row[]; run: RunAction }) {
+  const client = useApiClient()
   const [sku, setSku] = useState('')
   const [name, setName] = useState('')
   const [kind, setKind] = useState<'bottle' | 'sample' | 'other'>('bottle')
@@ -49,7 +51,7 @@ export function CatalogueActions({ products, run }: { products: Row[]; run: RunA
   async function onCreate(e: FormEvent) {
     e.preventDefault()
     const ok = await run(
-      () => api.createProduct({ sku, name, kind, volume_ml: volume ? Number(volume) : null, description }),
+      () => client.createProduct({ sku, name, kind, volume_ml: volume ? Number(volume) : null, description }),
       `Product ${sku.toUpperCase()} created (not for sale until approved)`,
     )
     if (ok) {
@@ -68,7 +70,7 @@ export function CatalogueActions({ products, run }: { products: Row[]; run: RunA
     }
     setPriceError('')
     const ok = await run(
-      () => api.createPrice({ product_id: priceProduct, channel, amount_kobo: kobo, label: '', activate }),
+      () => client.createPrice({ product_id: priceProduct, channel, amount_kobo: kobo, label: '', activate }),
       `${channel} price ${formatNgn(kobo)} ${activate ? 'activated' : 'saved as draft'}`,
     )
     if (ok) setAmount('')
@@ -148,6 +150,7 @@ export function ProductSaleControls({ product, run }: { product: Row; run: RunAc
 }
 
 function SaleControlsInner({ product, run, ce, live }: { product: Row; run: RunAction; ce: { retail: boolean; trade: boolean }; live: boolean }) {
+  const client = useApiClient()
   const [channels, setChannels] = useState(ce)
   return (
     <div className="row-actions row-actions-stacked">
@@ -158,7 +161,7 @@ function SaleControlsInner({ product, run, ce, live }: { product: Row; run: RunA
         onClick={() =>
           run(
             () =>
-              api.updateProduct(String(product.id), live ? { saleable: false, approved_for_sale: false } : { saleable: true, approved_for_sale: true }),
+              client.updateProduct(String(product.id), live ? { saleable: false, approved_for_sale: false } : { saleable: true, approved_for_sale: true }),
             live ? `${String(product.sku)} withdrawn from sale` : `${String(product.sku)} approved for sale`,
           )
         }
@@ -175,7 +178,7 @@ function SaleControlsInner({ product, run, ce, live }: { product: Row; run: RunA
               const next = { ...channels, [ch]: e.target.checked }
               setChannels(next) // optimistic; revert if the save fails
               const saved = await run(
-                () => api.updateProduct(String(product.id), { channel_eligibility: next }),
+                () => client.updateProduct(String(product.id), { channel_eligibility: next }),
                 `${String(product.sku)} ${ch} ${e.target.checked ? 'enabled' : 'disabled'}`,
               )
               if (!saved) setChannels(previous)
@@ -191,6 +194,7 @@ function SaleControlsInner({ product, run, ce, live }: { product: Row; run: RunA
 /* ---------------- Stock ---------------- */
 
 export function StockPanel({ products, batches, run }: { products: Row[]; batches: Row[]; run: RunAction }) {
+  const client = useApiClient()
   const [product, setProduct] = useState('')
   const [code, setCode] = useState('')
   const [qty, setQty] = useState('')
@@ -201,7 +205,7 @@ export function StockPanel({ products, batches, run }: { products: Row[]; batche
   async function onAdd(e: FormEvent) {
     e.preventDefault()
     const ok = await run(
-      () => api.createBatch({ product_id: product, batch_code: code, qty_on_hand: Number(qty), notes: '' }),
+      () => client.createBatch({ product_id: product, batch_code: code, qty_on_hand: Number(qty), notes: '' }),
       `Batch ${code} added (${qty} units)`,
     )
     if (ok) {
@@ -213,7 +217,7 @@ export function StockPanel({ products, batches, run }: { products: Row[]; batche
   async function onAdjust(e: FormEvent) {
     e.preventDefault()
     const ok = await run(
-      () => api.adjustStock({ batch_id: batch, delta_on_hand: Number(delta), reason }),
+      () => client.adjustStock({ batch_id: batch, delta_on_hand: Number(delta), reason }),
       `Stock adjusted by ${delta}`,
     )
     if (ok) {
@@ -307,6 +311,7 @@ export function StockPanel({ products, batches, run }: { products: Row[]; batche
 /* ---------------- Orders ---------------- */
 
 export function OrdersPanel({ orders, distributors, run }: { orders: Row[]; distributors: Row[]; run: RunAction }) {
+  const client = useApiClient()
   if (orders.length === 0) return <p className="meta">No orders yet.</p>
   const distCode = (id: unknown) => (id ? String(distributors.find((d) => d.id === id)?.code ?? id) : 'retail customer')
   return (
@@ -340,22 +345,22 @@ export function OrdersPanel({ orders, distributors, run }: { orders: Row[]; dist
                   <td data-label="Actions">
                     <div className="row-actions">
                       {o.payment_status !== 'paid' && o.payment_status !== 'refunded' && o.fulfillment_status !== 'cancelled' ? (
-                        <button type="button" className="btn btn-secondary" onClick={() => run(() => api.setPayment(id, { payment_status: 'paid', note: 'Recorded in admin' }), `Order ${ref} marked paid`)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => run(() => client.setPayment(id, { payment_status: 'paid', note: 'Recorded in admin' }), `Order ${ref} marked paid`)}>
                           Record payment
                         </button>
                       ) : null}
                       {o.payment_status === 'paid' ? (
-                        <button type="button" className="btn btn-secondary" onClick={() => run(() => api.setPayment(id, { payment_status: 'refunded', note: 'Refund recorded in admin' }), `Order ${ref} refund recorded`)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => run(() => client.setPayment(id, { payment_status: 'refunded', note: 'Refund recorded in admin' }), `Order ${ref} refund recorded`)}>
                           Record refund
                         </button>
                       ) : null}
                       {!closed && o.fulfillment_status !== 'shipped' ? (
-                        <button type="button" className="btn btn-secondary" onClick={() => run(() => api.setFulfillment(id, { fulfillment_status: 'shipped' }), `Order ${ref} shipped`)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => run(() => client.setFulfillment(id, { fulfillment_status: 'shipped' }), `Order ${ref} shipped`)}>
                           Ship
                         </button>
                       ) : null}
                       {o.fulfillment_status === 'shipped' ? (
-                        <button type="button" className="btn btn-secondary" onClick={() => run(() => api.setFulfillment(id, { fulfillment_status: 'delivered' }), `Order ${ref} delivered`)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => run(() => client.setFulfillment(id, { fulfillment_status: 'delivered' }), `Order ${ref} delivered`)}>
                           Mark delivered
                         </button>
                       ) : null}
@@ -365,7 +370,7 @@ export function OrdersPanel({ orders, distributors, run }: { orders: Row[]; dist
                           className="btn btn-quiet"
                           onClick={() => {
                             if (window.confirm(`Cancel order ${ref}? Reserved stock is released.`)) {
-                              void run(() => api.setFulfillment(id, { fulfillment_status: 'cancelled' }), `Order ${ref} cancelled`)
+                              void run(() => client.setFulfillment(id, { fulfillment_status: 'cancelled' }), `Order ${ref} cancelled`)
                             }
                           }}
                         >
@@ -387,6 +392,7 @@ export function OrdersPanel({ orders, distributors, run }: { orders: Row[]; dist
 /* ---------------- Distributors ---------------- */
 
 export function DistributorsPanel({ distributors, run }: { distributors: Row[]; run: RunAction }) {
+  const client = useApiClient()
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [sponsor, setSponsor] = useState('')
@@ -398,7 +404,7 @@ export function DistributorsPanel({ distributors, run }: { distributors: Row[]; 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
     const ok = await run(
-      () => api.createDistributor({ name, code, sponsor_id: sponsor || null, notes }),
+      () => client.createDistributor({ name, code, sponsor_id: sponsor || null, notes }),
       `Distributor ${code.toUpperCase()} added (pending terms)`,
     )
     if (ok) {
@@ -412,7 +418,7 @@ export function DistributorsPanel({ distributors, run }: { distributors: Row[]; 
   async function onLogin(e: FormEvent) {
     e.preventDefault()
     const ok = await run(
-      () => api.createUser({ email, password, role: 'distributor', distributor_id: loginFor }),
+      () => client.createUser({ email, password, role: 'distributor', distributor_id: loginFor }),
       `Login created for ${email}. Share the password out-of-band.`,
     )
     if (ok) {
@@ -500,7 +506,7 @@ export function DistributorsPanel({ distributors, run }: { distributors: Row[]; 
                     value={String(d.status)}
                     onChange={(e) =>
                       run(
-                        () => api.updateDistributor(String(d.id), { status: e.target.value as 'pending_terms' | 'active' | 'suspended' }),
+                        () => client.updateDistributor(String(d.id), { status: e.target.value as 'pending_terms' | 'active' | 'suspended' }),
                         `${String(d.code)} set to ${e.target.value}`,
                       )
                     }
@@ -522,6 +528,7 @@ export function DistributorsPanel({ distributors, run }: { distributors: Row[]; 
 /* ---------------- Terms ---------------- */
 
 export function TermsPanel({ terms, distributors, run }: { terms: Row[]; distributors: Row[]; run: RunAction }) {
+  const client = useApiClient()
   const [kind, setKind] = useState<'wholesale_margin' | 'commission'>('commission')
   const [dist, setDist] = useState('')
   const [rate, setRate] = useState('')
@@ -542,7 +549,7 @@ export function TermsPanel({ terms, distributors, run }: { terms: Row[]; distrib
     }
     setRateError('')
     const ok = await run(
-      () => api.createTerm({ kind, distributor_id: dist || null, rate_bps, notes, activate }),
+      () => client.createTerm({ kind, distributor_id: dist || null, rate_bps, notes, activate }),
       `${kind} term ${activate ? 'activated' : 'saved as draft'}`,
     )
     if (ok) {

@@ -34,6 +34,9 @@ export function Shop() {
     <main className="section shop-page">
       <div className="shell">
         <h1>{copy.shop}</h1>
+        <p className="meta">
+          Full password-free journey (network, distributor, admin fixtures): <Link to="/demo/shop">{copy.demo}</Link>
+        </p>
         {error ? <StatusLine tone="error">{error}</StatusLine> : null}
 
         {unavailable ? (

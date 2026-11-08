@@ -31,6 +31,9 @@ export function Nav() {
           <NavLink to="/shop" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')}>
             {copy.shop}
           </NavLink>
+          <NavLink to="/demo/shop" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')} data-testid="nav-demo">
+            {copy.demo}
+          </NavLink>
           {user?.role === 'admin' ? (
             <NavLink to="/admin" className={({ isActive }) => (isActive ? 'nav-link is-active' : 'nav-link')}>
               {copy.admin}
