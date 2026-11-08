@@ -2,7 +2,6 @@ import { badRequest, conflict, forbidden, notFound } from '../errors.ts'
 import { newId, nowIso } from '../crypto.ts'
 import {
   DEFAULT_SETTINGS,
-  type AuthUser,
   type CommercialTerm,
   type Distributor,
   type Order,
