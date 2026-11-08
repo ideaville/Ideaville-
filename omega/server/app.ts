@@ -3,7 +3,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { cors } from 'hono/cors'
 import { AuthCredentialRejected } from './authCredentialRejected.ts'
 import { logAuthLoginOutcome, newLoginRequestId } from './authLoginTelemetry.ts'
-import { AppError, badRequest } from './errors.ts'
+import { AppError, badRequest, conflict } from './errors.ts'
 import { newId, nowIso } from './crypto.ts'
 import { createAccount, login, logout, maybeBootstrapAdmin, requireRole, requireUser } from './services/auth.ts'
 import { executeOwnerPasswordRecovery } from './services/ownerRecovery.ts'
@@ -13,6 +13,11 @@ import { getStore } from './store/index.ts'
 type Env = { Variables: { rawToken: string | null } }
 
 const SESSION_COOKIE = 'omega_session'
+
+/** Business limits that also keep kobo totals far below Number.MAX_SAFE_INTEGER (BIGINT parsed as number). */
+export const MAX_PRICE_KOBO = 10_000_000_000 // ₦100,000,000
+export const MAX_ORDER_LINES = 50
+export const MAX_LINE_QUANTITY = 10_000
 
 export function createApp() {
   const app = new Hono<Env>()
@@ -214,6 +219,13 @@ export function createApp() {
     }>()
     if (body.channel !== 'retail' && body.channel !== 'trade') throw badRequest('Invalid channel')
     if (!Array.isArray(body.lines)) throw badRequest('lines required')
+    if (body.lines.length > MAX_ORDER_LINES) throw badRequest(`At most ${MAX_ORDER_LINES} lines per order`)
+    for (const l of body.lines) {
+      if (!l || typeof l.product_id !== 'string') throw badRequest('Each line needs a product_id')
+      if (!Number.isInteger(l.quantity) || l.quantity <= 0 || l.quantity > MAX_LINE_QUANTITY) {
+        throw badRequest(`Quantity must be a whole number from 1 to ${MAX_LINE_QUANTITY}`)
+      }
+    }
     // Ignore any client-supplied unit_price_kobo — server prices only.
     const lines = body.lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity }))
     let buyer = null
@@ -331,15 +343,18 @@ export function createApp() {
     const store = await getStore()
     await requireRole(store, c.get('rawToken'), 'admin')
     await seedHistoricDrafts(store)
-    const [settings, products, distributors, orders, batches, terms, referrals] = await Promise.all([
+    const [settings, rawProducts, prices, distributors, orders, batches, terms, referrals] = await Promise.all([
       store.getSettings(),
       store.listProducts(),
+      store.listPrices(),
       store.listDistributors(),
       store.listOrders(),
       store.listBatches(),
       store.listTerms(),
       store.listReferrals(),
     ])
+    // Admin catalogue shows draft/active prices per product (admin-only; never public sale prices).
+    const products = rawProducts.map((p) => ({ ...p, prices: prices.filter((price) => price.product_id === p.id) }))
     return c.json({ settings, products, distributors, orders, batches, terms, referrals })
   })
 
@@ -398,7 +413,28 @@ export function createApp() {
       sponsor_id?: string | null
       referral_code?: string
     }>()
-    const distributor = await store.updateDistributor(c.req.param('id'), body)
+    const id = c.req.param('id')
+    const patch: { status?: 'pending_terms' | 'active' | 'suspended'; notes?: string; sponsor_id?: string | null; referral_code?: string } = {}
+    if ('status' in body) {
+      if (body.status !== 'pending_terms' && body.status !== 'active' && body.status !== 'suspended') throw badRequest('Invalid status')
+      patch.status = body.status
+    }
+    if ('notes' in body) {
+      if (typeof body.notes !== 'string') throw badRequest('notes must be a string')
+      patch.notes = body.notes.slice(0, 2000)
+    }
+    if ('referral_code' in body) {
+      if (typeof body.referral_code !== 'string' || !body.referral_code.trim()) throw badRequest('referral_code must be a non-empty string')
+      patch.referral_code = body.referral_code.trim().toUpperCase()
+    }
+    if ('sponsor_id' in body) {
+      const sponsor = body.sponsor_id
+      if (sponsor !== null && typeof sponsor !== 'string') throw badRequest('sponsor_id must be a string or null')
+      if (sponsor === id) throw badRequest('A distributor cannot sponsor itself')
+      if (sponsor && !(await store.listDistributors()).some((d) => d.id === sponsor)) throw badRequest('Unknown sponsor')
+      patch.sponsor_id = sponsor
+    }
+    const distributor = await store.updateDistributor(id, patch)
     return c.json({ distributor })
   })
 
@@ -458,8 +494,35 @@ export function createApp() {
     await requireRole(store, c.get('rawToken'), 'admin')
     const body = await c.req.json<Record<string, unknown>>()
     const patch: Record<string, unknown> = {}
-    for (const key of ['name', 'description', 'saleable', 'approved_for_sale', 'volume_ml', 'channel_eligibility'] as const) {
-      if (key in body) patch[key] = body[key]
+    if ('name' in body) {
+      if (typeof body.name !== 'string' || !body.name.trim()) throw badRequest('name must be a non-empty string')
+      patch.name = body.name.trim()
+    }
+    if ('description' in body) {
+      if (typeof body.description !== 'string') throw badRequest('description must be a string')
+      patch.description = body.description
+    }
+    for (const key of ['saleable', 'approved_for_sale'] as const) {
+      if (key in body) {
+        if (typeof body[key] !== 'boolean') throw badRequest(`${key} must be boolean`)
+        patch[key] = body[key]
+      }
+    }
+    if ('volume_ml' in body) {
+      const v = body.volume_ml
+      if (v !== null && !(typeof v === 'number' && Number.isInteger(v) && v > 0)) throw badRequest('volume_ml must be a positive integer or null')
+      patch.volume_ml = v
+    }
+    if ('channel_eligibility' in body) {
+      const ce = body.channel_eligibility as { retail?: unknown; trade?: unknown } | null
+      if (!ce || typeof ce.retail !== 'boolean' || typeof ce.trade !== 'boolean') {
+        throw badRequest('channel_eligibility must be { retail: boolean, trade: boolean }')
+      }
+      patch.channel_eligibility = { retail: ce.retail, trade: ce.trade }
+    }
+    const existing = await store.getProduct(c.req.param('id'))
+    if (existing?.kind === 'sample' && (patch.saleable === true || patch.approved_for_sale === true)) {
+      throw badRequest('Samples are non-saleable')
     }
     const product = await store.updateProduct(c.req.param('id'), patch)
     return c.json({ product })
@@ -478,7 +541,9 @@ export function createApp() {
     if (!body.product_id || !body.channel || typeof body.amount_kobo !== 'number') {
       throw badRequest('product_id, channel, amount_kobo required')
     }
-    if (!Number.isInteger(body.amount_kobo) || body.amount_kobo < 0) throw badRequest('Invalid amount')
+    if (!Number.isInteger(body.amount_kobo) || body.amount_kobo < 0 || body.amount_kobo > MAX_PRICE_KOBO) {
+      throw badRequest('Invalid amount')
+    }
     const admin = await requireRole(store, c.get('rawToken'), 'admin')
     const price = await store.createPrice({
       id: newId(),
@@ -537,6 +602,11 @@ export function createApp() {
     const admin = await requireRole(store, c.get('rawToken'), 'admin')
     const body = await c.req.json<{ payment_status?: 'paid' | 'failed' | 'refunded' | 'pending_verification'; note?: string }>()
     if (!body.payment_status) throw badRequest('payment_status required')
+    if (!['paid', 'failed', 'refunded', 'pending_verification'].includes(body.payment_status)) throw badRequest('Invalid payment_status')
+    const existing = await store.getOrder(c.req.param('id'))
+    if (existing?.order.fulfillment_status === 'cancelled' && body.payment_status !== 'refunded') {
+      throw conflict('Cancelled orders cannot take payment', 'order_cancelled')
+    }
     const kind =
       body.payment_status === 'paid'
         ? 'verified_paid'

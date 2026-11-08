@@ -1,0 +1,94 @@
+name: OMEGA checks
+
+on:
+  pull_request:
+    paths:
+      - 'omega/**'
+      - '.github/workflows/omega.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'omega/**'
+      - '.github/workflows/omega.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omega-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: omega
+
+    # Disposable Postgres for live store tests. Passwords are throwaways for this
+    # CI-only container, not secrets. Nothing here touches staging or production.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: omega-ci
+          POSTGRES_DB: omega_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d omega_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: omega-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: omega/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint -- --deny-warnings
+
+      - name: Test (empty DB, superuser — app applies migrations)
+        env:
+          OMEGA_TEST_DATABASE_URL: postgres://postgres:omega-ci@localhost:5432/omega_test
+        run: npm test
+
+      # Staging-like: schema preapplied by the owner, app connects as restricted omega_app.
+      # Separate databases: live suites write rows; the preapplied IT asserts none beyond the seed.
+      - name: Prepare preapplied databases (omega_app)
+        run: |
+          # 003 (applied by the previous step) may already have created omega_app without LOGIN.
+          psql -v ON_ERROR_STOP=1 -d postgres -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omega_app') THEN CREATE ROLE omega_app NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF; END \$\$"
+          psql -v ON_ERROR_STOP=1 -d postgres -c "ALTER ROLE omega_app LOGIN PASSWORD 'omega-app-ci'"
+          for db in omega_it omega_live; do
+            psql -v ON_ERROR_STOP=1 -d postgres -c "CREATE DATABASE $db"
+            psql -q -v ON_ERROR_STOP=1 -d "$db" -f migrations/staging_supabase_handoff.sql
+            psql -q -v ON_ERROR_STOP=1 -d "$db" -f migrations/004_revoke_omega_app_create.sql
+          done
+
+      - name: Test (preapplied schema as omega_app)
+        env:
+          OMEGA_IT_DATABASE_URL: postgres://omega_app:omega-app-ci@localhost:5432/omega_it
+          OMEGA_TEST_DATABASE_URL: postgres://omega_app:omega-app-ci@localhost:5432/omega_live
+        run: npm test
+
+      - name: Typecheck and build (Vercel output)
+        run: npm run build:vercel
+
+      - name: Verify Vercel output
+        run: npm run verify:vercel-output
