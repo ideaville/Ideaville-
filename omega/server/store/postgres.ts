@@ -105,8 +105,26 @@ export function createUnconfiguredStore(): OmegaStore {
   }
 }
 
+/**
+ * Money columns are BIGINT (kobo). postgres.js returns BIGINT as strings by default,
+ * which breaks UI formatting and makes Postgres responses differ from the memory store.
+ * Parse to JS numbers — kobo amounts stay far below Number.MAX_SAFE_INTEGER.
+ */
+export const pgTypes = {
+  bigint: {
+    to: 20,
+    from: [20],
+    serialize: (value: number | bigint | string) => String(value),
+    parse: (value: string) => {
+      const n = Number(value)
+      if (!Number.isSafeInteger(n)) throw new Error('BIGINT value exceeds safe integer range')
+      return n
+    },
+  },
+}
+
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {
-  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20 })
+  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20, types: pgTypes })
   await migratePostgres(sql)
 
   async function requireAdmin(actor: AuthUser) {

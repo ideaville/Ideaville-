@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type AuthUser } from '../lib/api'
+import { api, SESSION_CHANGED_EVENT, type AuthUser } from '../lib/api'
 
 export function useSession() {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -7,19 +7,24 @@ export function useSession() {
 
   useEffect(() => {
     let cancelled = false
-    api
-      .me()
-      .then((res) => {
-        if (!cancelled) setUser(res.user)
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true)
-      })
+    function refresh() {
+      api
+        .me()
+        .then((res) => {
+          if (!cancelled) setUser(res.user)
+        })
+        .catch(() => {
+          if (!cancelled) setUser(null)
+        })
+        .finally(() => {
+          if (!cancelled) setLoaded(true)
+        })
+    }
+    refresh()
+    window.addEventListener(SESSION_CHANGED_EVENT, refresh)
     return () => {
       cancelled = true
+      window.removeEventListener(SESSION_CHANGED_EVENT, refresh)
     }
   }, [])
 
