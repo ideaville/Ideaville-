@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { StatusLine } from '../components/StatusLine'
@@ -12,6 +12,17 @@ import './Network.css'
  * Discoverable distributor network + referral surface.
  * No ranks, payouts, or invented commission figures.
  */
+type NetworkLoadResult = { kind: 'ok'; data: DistributorNetwork } | { kind: 'error'; message: string }
+
+/** Fetches without touching React state, so effects only set state in the async callback. */
+async function fetchNetwork(): Promise<NetworkLoadResult> {
+  try {
+    return { kind: 'ok', data: await api.distributorNetwork() }
+  } catch (err) {
+    return { kind: 'error', message: err instanceof Error ? err.message : 'Error' }
+  }
+}
+
 export function Network() {
   const navigate = useNavigate()
   const { user, loaded } = useSession()
@@ -24,18 +35,20 @@ export function Network() {
   const [lookupCode, setLookupCode] = useState('')
   const [lookupResult, setLookupResult] = useState('')
 
-  async function load() {
-    try {
-      setData(await api.distributorNetwork())
-      setDbOff(false)
-      setError('')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error'
-      setError(msg)
-      if (msg.toLowerCase().includes('not configured') || msg.toLowerCase().includes('unconfigured')) {
-        setDbOff(true)
-      }
+  const applyResult = useCallback((result: NetworkLoadResult) => {
+    if (result.kind === 'error') {
+      setError(result.message)
+      const msg = result.message.toLowerCase()
+      if (msg.includes('not configured') || msg.includes('unconfigured')) setDbOff(true)
+      return
     }
+    setData(result.data)
+    setDbOff(false)
+    setError('')
+  }, [])
+
+  async function load() {
+    applyResult(await fetchNetwork())
   }
 
   useEffect(() => {
@@ -52,8 +65,14 @@ export function Network() {
       navigate('/login')
       return
     }
-    void load()
-  }, [loaded, user, navigate])
+    let active = true
+    fetchNetwork().then((result) => {
+      if (active) applyResult(result)
+    })
+    return () => {
+      active = false
+    }
+  }, [loaded, user, navigate, applyResult])
 
   async function onRecord(event: FormEvent) {
     event.preventDefault()

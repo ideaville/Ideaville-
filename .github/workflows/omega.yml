@@ -1,0 +1,71 @@
+name: OMEGA checks
+
+on:
+  pull_request:
+    paths:
+      - 'omega/**'
+      - '.github/workflows/omega.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'omega/**'
+      - '.github/workflows/omega.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omega-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: omega
+
+    # Disposable database for the live Postgres store tests (OMEGA_TEST_DATABASE_URL).
+    # The password is a throwaway for this CI-only container, not a secret.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: omega
+          POSTGRES_PASSWORD: omega-ci
+          POSTGRES_DB: omega_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U omega -d omega_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      OMEGA_TEST_DATABASE_URL: postgres://omega:omega-ci@localhost:5432/omega_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: omega/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint -- --deny-warnings
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck and build (Vercel output)
+        run: npm run build:vercel
+
+      - name: Verify Vercel output
+        run: npm run verify:vercel-output

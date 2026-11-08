@@ -14,6 +14,27 @@ const GATES = [
 
 type Tab = 'activation' | 'catalogue' | 'stock' | 'orders' | 'distributors' | 'referrals' | 'terms'
 
+type AdminLoadResult =
+  | { kind: 'ok'; user: AuthUser; data: AdminOverview }
+  | { kind: 'redirect' }
+  | { kind: 'error'; message: string }
+
+function isDbOffMessage(message: string) {
+  const msg = message.toLowerCase()
+  return msg.includes('not configured') || msg.includes('unconfigured')
+}
+
+/** Fetches without touching React state, so effects only set state in the async callback. */
+async function fetchAdminData(): Promise<AdminLoadResult> {
+  try {
+    const me = await api.me()
+    if (me.user.role !== 'admin') return { kind: 'redirect' }
+    return { kind: 'ok', user: me.user, data: await api.adminOverview() }
+  } catch (err) {
+    return { kind: 'error', message: err instanceof Error ? err.message : 'Error' }
+  }
+}
+
 export function Admin() {
   const navigate = useNavigate()
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -23,28 +44,35 @@ export function Admin() {
   const [tab, setTab] = useState<Tab>('activation')
   const [dbOff, setDbOff] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      const me = await api.me()
-      if (me.user.role !== 'admin') {
+  const applyResult = useCallback(
+    (result: AdminLoadResult) => {
+      if (result.kind === 'redirect') {
         navigate('/login')
         return
       }
-      setUser(me.user)
-      setData(await api.adminOverview())
-      setDbOff(false)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error'
-      setError(msg)
-      if (msg.toLowerCase().includes('not configured') || msg.toLowerCase().includes('unconfigured')) {
-        setDbOff(true)
+      if (result.kind === 'error') {
+        setError(result.message)
+        if (isDbOffMessage(result.message)) setDbOff(true)
+        return
       }
-    }
-  }, [navigate])
+      setUser(result.user)
+      setData(result.data)
+      setDbOff(false)
+    },
+    [navigate],
+  )
+
+  const load = useCallback(async () => applyResult(await fetchAdminData()), [applyResult])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    let active = true
+    fetchAdminData().then((result) => {
+      if (active) applyResult(result)
+    })
+    return () => {
+      active = false
+    }
+  }, [applyResult])
 
   async function toggle(key: string, value: boolean) {
     setMessage('')
