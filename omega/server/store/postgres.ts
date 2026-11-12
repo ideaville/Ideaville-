@@ -17,8 +17,13 @@ import {
   type StockBatch,
   type User,
 } from '../types.ts'
-import { SCHEMA_SQL_001, SCHEMA_SQL_002 } from './schemaSql.ts'
+import { migratePostgres } from './migrate.ts'
+import { OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
+import { OWNER_RECOVERY_SETTINGS_KEY } from '../ownerRecoveryConfig.ts'
 import type { OmegaStore, PlaceOrderInput } from './types.ts'
+
+export { OMEGA_SEARCH_PATH, OMEGA_SEARCH_PATH_GUC } from './postgresPaths.ts'
+export { migratePostgres, REQUIRED_MIGRATION_MARKERS } from './migrate.ts'
 
 function normalizeDistributor(row: Distributor): Distributor {
   return {
@@ -26,17 +31,6 @@ function normalizeDistributor(row: Distributor): Distributor {
     sponsor_id: row.sponsor_id ?? null,
     referral_code: row.referral_code || row.code,
   }
-}
-
-export async function migratePostgres(sql: postgres.Sql): Promise<void> {
-  await sql.begin(async (tx) => {
-    await tx.unsafe(SCHEMA_SQL_001)
-    await tx`INSERT INTO schema_migrations (id) VALUES ('001_init') ON CONFLICT (id) DO NOTHING`
-  })
-  await sql.begin(async (tx) => {
-    await tx.unsafe(SCHEMA_SQL_002)
-    await tx`INSERT INTO schema_migrations (id) VALUES ('002_network') ON CONFLICT (id) DO NOTHING`
-  })
 }
 
 function mapSettings(rows: Array<{ key: string; value: unknown }>): Settings {
@@ -48,23 +42,24 @@ function mapSettings(rows: Array<{ key: string; value: unknown }>): Settings {
   return out
 }
 
-export function createUnconfiguredStore(): OmegaStore {
+function createFailClosedStore(
+  readiness: {
+    persistence: 'unconfigured' | 'error'
+    migrated: boolean
+    message: string
+    code: string
+  },
+  failMessage: string,
+  failCode: string,
+): OmegaStore {
   // Explicit object — a Proxy that traps `then` breaks `async` returns / await getStore().
   const fail = async (..._args: never[]): Promise<never> => {
-    throw unavailable(
-      'Persistence not configured. Set DATABASE_URL (Postgres) on Vercel omega-staging, redeploy, migrations auto-apply on boot.',
-      'persistence_unconfigured',
-    )
+    throw unavailable(failMessage, failCode)
   }
   return {
     kind: 'postgres',
     async readiness() {
-      return {
-        persistence: 'unconfigured' as const,
-        migrated: false,
-        message:
-          'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres to the Vercel project env (no secrets in git).',
-      }
+      return readiness
     },
     getSettings: fail,
     updateSettings: fail,
@@ -72,9 +67,11 @@ export function createUnconfiguredStore(): OmegaStore {
     findUserByEmail: fail,
     findUserById: fail,
     listUsers: fail,
+    applyOwnerPasswordRecovery: fail,
     createSession: fail,
     findSessionByTokenHash: fail,
     deleteSession: fail,
+    deleteSessionsForUser: fail,
     createDistributor: fail,
     listDistributors: fail,
     getDistributor: fail,
@@ -105,9 +102,84 @@ export function createUnconfiguredStore(): OmegaStore {
   }
 }
 
+export function createUnconfiguredStore(): OmegaStore {
+  return createFailClosedStore(
+    {
+      persistence: 'unconfigured',
+      migrated: false,
+      message:
+        'DATABASE_URL is not set. Commerce APIs fail closed. Add Postgres pooler URL to the Vercel project env (no secrets in git).',
+      code: 'persistence_unconfigured',
+    },
+    'Persistence not configured. Set DATABASE_URL (Postgres pooler) on Vercel omega-staging, redeploy.',
+    'persistence_unconfigured',
+  )
+}
+
+/** DATABASE_URL was set but connect/migrate/marker checks failed — not the same as unconfigured. */
+export function createFailedStore(err: unknown): OmegaStore {
+  const code =
+    err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+      ? (err as { code: string }).code
+      : 'persistence_init_failed'
+  // Never put driver/migrate text on the public readiness or AppError throw path.
+  // Detail stays in the init-time console.error in getStore().
+  const publicMessage = 'Persistence unavailable.'
+  const failCode = code.startsWith('persistence_') ? code : 'persistence_init_failed'
+  return createFailClosedStore(
+    {
+      persistence: 'error',
+      migrated: false,
+      message: publicMessage,
+      code: failCode,
+    },
+    publicMessage,
+    failCode,
+  )
+}
+
+/**
+ * Money columns are BIGINT (kobo). postgres.js returns BIGINT as strings by default,
+ * which breaks UI formatting and makes Postgres responses differ from the memory store.
+ * Parse to JS numbers — kobo amounts stay far below Number.MAX_SAFE_INTEGER.
+ */
+export const pgTypes = {
+  bigint: {
+    to: 20,
+    from: [20],
+    serialize: (value: number | bigint | string) => String(value),
+    parse: (value: string) => {
+      const n = Number(value)
+      if (!Number.isSafeInteger(n)) throw new Error('BIGINT value exceeds safe integer range')
+      return n
+    },
+  },
+}
+
+/** Idempotent migrations (IF NOT EXISTS) emit "already exists, skipping" notices on every boot. */
+const IDEMPOTENT_NOTICE_CODES = new Set(['42P06', '42P07', '42701', '42710'])
+
+export function logNotice(notice: { code?: string; message?: string }) {
+  if (notice.code && IDEMPOTENT_NOTICE_CODES.has(notice.code)) return
+  console.log('[omega] postgres notice:', notice.code ?? '', notice.message ?? '')
+}
+
 export async function tryCreatePostgresStore(databaseUrl: string): Promise<OmegaStore> {
-  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 20 })
-  await migratePostgres(sql)
+  // prepare:false is required for Supabase transaction pooler (:6543). Harmless on session (:5432).
+  const sql = postgres(databaseUrl, {
+    max: 5,
+    idle_timeout: 20,
+    prepare: false,
+    connection: { search_path: OMEGA_SEARCH_PATH_GUC },
+    types: pgTypes,
+    onnotice: logNotice,
+  })
+  try {
+    await migratePostgres(sql)
+  } catch (err) {
+    await sql.end({ timeout: 5 }).catch(() => undefined)
+    throw err
+  }
 
   async function requireAdmin(actor: AuthUser) {
     if (actor.role !== 'admin') throw forbidden()
@@ -117,11 +189,12 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     kind: 'postgres',
 
     async readiness() {
-      const rows = await sql`SELECT id FROM schema_migrations WHERE id = '001_init'`
+      const rows = await sql`SELECT id FROM omega.schema_migrations WHERE id = '001_init'`
       return {
         persistence: 'postgres',
         migrated: rows.length > 0,
-        message: 'Postgres connected; schema migrated. Commerce enabled only after admin activation settings.',
+        message:
+          'Postgres connected; required schema markers present. Commerce enabled only after admin activation settings.',
       }
     },
 
@@ -133,6 +206,8 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     async updateSettings(patch, actor) {
       await requireAdmin(actor)
       for (const [key, value] of Object.entries(patch)) {
+        // Never allow API/settings writes to touch internal recovery markers.
+        if (key.startsWith('__')) throw forbidden('Invalid settings key')
         await sql`
           INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${sql.json(value as never)}, NOW())
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
@@ -165,6 +240,48 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
 
     async listUsers() {
       return sql<User>`SELECT * FROM users ORDER BY created_at`
+    },
+
+    async applyOwnerPasswordRecovery(input) {
+      const claimValue = {
+        status: 'consumed',
+        fp: input.recoveryFingerprint,
+        at: input.consumedAt,
+      }
+      const applied = await sql.begin(async (tx) => {
+        // Durable one-use: once status=consumed, secret rotation alone cannot reopen.
+        // Re-enable only if owner explicitly deletes this settings row (separate approval).
+        const claimed = await tx<{ key: string }>`
+          INSERT INTO settings (key, value, updated_at)
+          VALUES (${OWNER_RECOVERY_SETTINGS_KEY}, ${tx.json(claimValue as never)}, NOW())
+          ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value, updated_at = NOW()
+            WHERE (settings.value->>'status') IS DISTINCT FROM 'consumed'
+          RETURNING key`
+        if (!claimed[0]) return false
+
+        const locked = await tx<{ id: string }>`
+          SELECT id FROM users
+          WHERE id = ${input.adminId}::uuid AND role = 'admin' AND active = TRUE
+          FOR UPDATE`
+        if (!locked[0]) {
+          // Roll back claim — do not leave consumed marker without a password change.
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
+
+        const updated = await tx<{ id: string }>`
+          UPDATE users
+          SET password_hash = ${input.passwordHash}
+          WHERE id = ${input.adminId}::uuid AND role = 'admin' AND active = TRUE
+          RETURNING id`
+        if (updated.length !== 1) {
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
+
+        await tx`DELETE FROM sessions WHERE user_id = ${input.adminId}::uuid`
+        return true
+      })
+      return { applied: Boolean(applied) }
     },
 
     async createSession(session) {
@@ -205,13 +322,21 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
       await sql`DELETE FROM sessions WHERE id = ${id}`
     },
 
+    async deleteSessionsForUser(userId) {
+      await sql`DELETE FROM sessions WHERE user_id = ${userId}::uuid`
+    },
+
     async createDistributor(d) {
       const referralCode = d.referral_code || d.code
-      const rows = await sql<Distributor>`
-        INSERT INTO distributors (id, name, code, status, notes, sponsor_id, referral_code, created_at)
-        VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.sponsor_id}, ${referralCode}, ${d.created_at})
-        RETURNING *`
-      return normalizeDistributor(rows[0])
+      try {
+        const rows = await sql<Distributor>`
+          INSERT INTO distributors (id, name, code, status, notes, sponsor_id, referral_code, created_at)
+          VALUES (${d.id}, ${d.name}, ${d.code}, ${d.status}, ${d.notes}, ${d.sponsor_id}, ${referralCode}, ${d.created_at})
+          RETURNING *`
+        return normalizeDistributor(rows[0])
+      } catch {
+        throw conflict('Distributor code or referral code exists')
+      }
     },
 
     async listDistributors() {
@@ -280,16 +405,20 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
     },
 
     async createProduct(p) {
-      const rows = await sql<Product>`
-        INSERT INTO products (id, sku, name, volume_ml, kind, channel_eligibility, saleable, approved_for_sale, description, created_at)
-        VALUES (${p.id}, ${p.sku}, ${p.name}, ${p.volume_ml}, ${p.kind}, ${sql.json(p.channel_eligibility)}, ${p.saleable}, ${p.approved_for_sale}, ${p.description}, ${p.created_at})
-        RETURNING *`
-      return {
-        ...rows[0],
-        channel_eligibility:
-          typeof rows[0].channel_eligibility === 'string'
-            ? JSON.parse(rows[0].channel_eligibility as unknown as string)
-            : rows[0].channel_eligibility,
+      try {
+        const rows = await sql<Product>`
+          INSERT INTO products (id, sku, name, volume_ml, kind, channel_eligibility, saleable, approved_for_sale, description, created_at)
+          VALUES (${p.id}, ${p.sku}, ${p.name}, ${p.volume_ml}, ${p.kind}, ${sql.json(p.channel_eligibility)}, ${p.saleable}, ${p.approved_for_sale}, ${p.description}, ${p.created_at})
+          RETURNING *`
+        return {
+          ...rows[0],
+          channel_eligibility:
+            typeof rows[0].channel_eligibility === 'string'
+              ? JSON.parse(rows[0].channel_eligibility as unknown as string)
+              : rows[0].channel_eligibility,
+        }
+      } catch {
+        throw conflict('SKU exists')
       }
     },
 
@@ -522,6 +651,30 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
         const orderRows = await tx<Order>`SELECT * FROM orders WHERE id=${input.orderId} FOR UPDATE`
         if (!orderRows[0]) throw notFound('Order not found')
         const order = orderRows[0]
+        if (order.fulfillment_status === 'delivered' || order.fulfillment_status === 'cancelled') {
+          throw conflict('Order is already closed', 'order_closed')
+        }
+        if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'shipped') {
+          throw conflict('Shipped orders cannot be cancelled', 'order_shipped')
+        }
+        if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'allocated') {
+          // Release any stock still reserved for this order.
+          const reserves = await tx<{ batch_id: string; delta_reserved: number }>`
+            SELECT batch_id, delta_reserved FROM stock_movements
+            WHERE order_id=${order.id} AND reason='order_reserve' FOR UPDATE`
+          for (const r of reserves) {
+            const batches = await tx<StockBatch>`SELECT * FROM stock_batches WHERE id=${r.batch_id} FOR UPDATE`
+            const batch = batches[0]
+            if (!batch) continue
+            const qty = Number(r.delta_reserved)
+            const reserved = batch.qty_reserved - qty
+            if (reserved < 0) throw conflict('Stock integrity error on cancel', 'stock_conflict')
+            await tx`UPDATE stock_batches SET qty_reserved=${reserved} WHERE id=${batch.id}`
+            await tx`
+              INSERT INTO stock_movements (id, batch_id, delta_on_hand, delta_reserved, reason, order_id, actor_user_id, created_at)
+              VALUES (${newId()}, ${batch.id}, 0, ${-qty}, 'order_cancel_release', ${order.id}, ${input.actor.id}, ${nowIso()})`
+          }
+        }
         if (
           (input.fulfillmentStatus === 'shipped' || input.fulfillmentStatus === 'delivered') &&
           order.fulfillment_status === 'allocated'
@@ -543,7 +696,8 @@ export async function tryCreatePostgresStore(databaseUrl: string): Promise<Omega
               VALUES (${newId()}, ${batch.id}, ${-qty}, ${-qty}, 'order_ship', ${order.id}, ${input.actor.id}, ${nowIso()})`
           }
         }
-        const status = input.fulfillmentStatus === 'delivered' ? 'fulfilled' : order.status
+        const status =
+          input.fulfillmentStatus === 'delivered' ? 'fulfilled' : input.fulfillmentStatus === 'cancelled' ? 'cancelled' : order.status
         const updated = await tx<Order>`
           UPDATE orders SET fulfillment_status=${input.fulfillmentStatus}, status=${status}, updated_at=NOW()
           WHERE id=${order.id} RETURNING *`

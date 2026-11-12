@@ -1,5 +1,5 @@
 import { createMemoryStore } from './memory.ts'
-import { createUnconfiguredStore, tryCreatePostgresStore } from './postgres.ts'
+import { createFailedStore, createUnconfiguredStore, tryCreatePostgresStore } from './postgres.ts'
 import type { OmegaStore } from './types.ts'
 
 let singleton: OmegaStore | null = null
@@ -21,8 +21,12 @@ export async function getStore(): Promise<OmegaStore> {
           singleton = await tryCreatePostgresStore(url)
           return singleton
         } catch (error) {
-          console.error('[omega] postgres init failed; failing closed', error instanceof Error ? error.message : 'error')
-          singleton = createUnconfiguredStore()
+          // DATABASE_URL was provided — never masquerade as "unconfigured" healthy empty state.
+          console.error(
+            '[omega] postgres init failed; failing closed with error readiness',
+            error instanceof Error ? error.message : 'error',
+          )
+          singleton = createFailedStore(error)
           return singleton
         }
       }

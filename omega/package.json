@@ -11,6 +11,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test --test-concurrency=1 server/**/*.test.ts",
+    "test:pg-it:setup": "bash scripts/setup-pg-integration.sh",
+    "test:pg-it": "node --experimental-strip-types --test --test-concurrency=1 server/postgres-preapplied.integration.test.ts",
     "dev:api": "node --experimental-strip-types server/dev-api.ts",
     "dev:all": "echo 'Run npm run dev:api in one terminal and npm run dev in another'"
   },

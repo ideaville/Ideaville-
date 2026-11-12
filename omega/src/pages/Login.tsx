@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { StatusLine } from '../components/StatusLine'
 import { api } from '../lib/api'
 import { copy } from '../lib/copy'
+import { messageForLoginFailure } from '../lib/loginError'
 import { useAppStatus } from '../hooks/useAppStatus'
 import './Login.css'
 
@@ -20,8 +21,9 @@ export function Login() {
     try {
       const { user } = await api.login(email, password)
       navigate(user.role === 'admin' ? '/admin' : '/distributor')
-    } catch {
-      setError(copy.signInError)
+    } catch (err) {
+      // Only 401/unauthorized may claim wrong credentials; 5xx/network must not masquerade.
+      setError(messageForLoginFailure(err))
     }
   }
 
@@ -74,6 +76,8 @@ export function Login() {
         </form>
         <p className="meta login-back">
           <Link to="/shop">{copy.shop}</Link>
+          {' · '}
+          <Link to="/recover">{copy.recoveryLink}</Link>
         </p>
       </div>
     </main>

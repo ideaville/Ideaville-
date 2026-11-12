@@ -7,6 +7,8 @@ Petrol-only performance additive **prototype**: product story, label concept, Ni
 ## Docs
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — stack, fail-closed rules, owner setup, readiness matrix  
+- [`docs/STAGING_DB_HANDOFF.md`](./docs/STAGING_DB_HANDOFF.md) — Supabase staging SQL + bootstrap env names  
+
 - [`STAGING_PREVIEW.md`](./STAGING_PREVIEW.md) — protected Vercel preview process  
 - [`LAUNCH_REVIEW.md`](./LAUNCH_REVIEW.md) — earlier compliance notes  
 

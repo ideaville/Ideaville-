@@ -1,3 +1,4 @@
+import { AuthCredentialRejected } from '../authCredentialRejected.ts'
 import { forbidden, unauthorized } from '../errors.ts'
 import { hashPassword, hashToken, issueSessionToken, newId, nowIso, verifyPassword } from '../crypto.ts'
 import type { OmegaStore } from '../store/types.ts'
@@ -11,9 +12,9 @@ export async function login(
   password: string,
 ): Promise<{ token: string; user: AuthUser }> {
   const user = await store.findUserByEmail(email.trim())
-  if (!user || !user.active) throw unauthorized('Invalid credentials')
+  if (!user || !user.active) throw new AuthCredentialRejected('lookup_rejected')
   const ok = await verifyPassword(password, user.password_hash)
-  if (!ok) throw unauthorized('Invalid credentials')
+  if (!ok) throw new AuthCredentialRejected('verification_rejected')
   const token = issueSessionToken()
   const expires = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString()
   await store.createSession({
@@ -76,10 +77,17 @@ export async function createAccount(
   })
 }
 
+/**
+ * Creates the first admin only when both bootstrap env vars are set and no admin exists.
+ * Password never logged. Role is app `admin` (scrypt session) — not Supabase Auth metadata.
+ * Owner inspects distributor Network via Admin → Distributors / Referrals (no fabricated
+ * distributor membership required).
+ */
 export async function maybeBootstrapAdmin(store: OmegaStore) {
   const email = process.env.OMEGA_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase()
   const password = process.env.OMEGA_BOOTSTRAP_ADMIN_PASSWORD
   if (!email || !password) return null
+  if (password.length < 10) return null
   const existing = await store.findUserByEmail(email)
   if (existing) return existing
   const users = await store.listUsers()

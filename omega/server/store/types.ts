@@ -31,9 +31,11 @@ export type PlaceOrderResult = {
 export interface OmegaStore {
   readonly kind: 'memory' | 'postgres'
   readiness(): Promise<{
-    persistence: 'memory' | 'postgres' | 'unconfigured'
+    /** `error` = DATABASE_URL set but init/marker/permission failed — never treat as healthy unconfigured. */
+    persistence: 'memory' | 'postgres' | 'unconfigured' | 'error'
     migrated: boolean
     message: string
+    code?: string
   }>
   getSettings(): Promise<Settings>
   updateSettings(patch: Partial<Settings>, actor: AuthUser): Promise<Settings>
@@ -43,9 +45,22 @@ export interface OmegaStore {
   findUserById(id: string): Promise<User | null>
   listUsers(): Promise<User[]>
 
+  /**
+   * Atomic owner recovery: claim one-use fingerprint, set password_hash for fixed admin id only,
+   * delete that user's sessions. Uses settings key (no schema migration). Returns false if claim lost.
+   */
+  applyOwnerPasswordRecovery(input: {
+    adminId: string
+    passwordHash: string
+    recoveryFingerprint: string
+    consumedAt: string
+  }): Promise<{ applied: boolean }>
+
   createSession(session: Session): Promise<Session>
   findSessionByTokenHash(tokenHash: string): Promise<(Session & { user: User }) | null>
   deleteSession(id: string): Promise<void>
+  /** Test/ops helper — delete all sessions for a user (used inside recovery txn on postgres). */
+  deleteSessionsForUser(userId: string): Promise<void>
 
   createDistributor(d: Distributor): Promise<Distributor>
   listDistributors(): Promise<Distributor[]>

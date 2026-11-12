@@ -3,6 +3,7 @@ export const copy = {
   productLine: 'Performance additives',
   petrolOnly: 'Petrol only',
   shop: 'Shop',
+  demo: 'Demo',
   signIn: 'Sign in',
   signOut: 'Sign out',
   orders: 'Orders',
@@ -18,8 +19,29 @@ export const copy = {
   noOrders: 'No orders.',
   databaseOff: 'Database not connected.',
   ordersOff: 'Orders are off in preview.',
+  previewStoreHelp:
+    'Preview storefront — browse and review only. No payment, stock, email, commission, or live order is created.',
+  previewPrice: 'Preview price (draft)',
+  previewReview: 'Preview review',
+  previewReviewed: 'Preview review complete — no order was placed.',
+  orderPlaced: 'Order placed',
+  orderNoContact: 'Contact details are not collected yet in this prototype. Payment is recorded by the admin.',
+
+  tradePrice: 'Trade price',
   signInUnavailable: 'Sign-in unavailable.',
   signInError: 'Email or password is incorrect.',
+  /** Non-credential failures (5xx, network, malformed) — never claim wrong password. */
+  signInFailed: 'Sign-in could not be completed. Try again.',
+  recoveryTitle: 'Owner recovery',
+  recoveryHelp:
+    'One-use staging recovery for the existing owner admin. Enter the recovery authorization from Vercel, then your new password. You will sign in normally afterward.',
+  recoveryAuthorization: 'Recovery authorization',
+  recoveryNewPassword: 'New password',
+  recoveryConfirmPassword: 'Confirm new password',
+  recoverySubmit: 'Update password',
+  recoveryFailed: 'Recovery could not be completed.',
+  recoverySuccess: 'Password updated. Sign in with your new password.',
+  recoveryLink: 'Owner recovery',
   preview: 'Preview',
   footer: 'Ideaville Enterprise · Nigeria',
   safetyPetrol: 'Petrol engines only — not diesel, aviation, or marine two-stroke.',
@@ -39,4 +61,6 @@ export const copy = {
   noSponsored: 'No sponsored distributors.',
   networkUnavailable: 'Network unavailable.',
   termsUnset: 'Commercial terms unset.',
+  adminNetworkInspect:
+    'Owner network inspection: distributors, referral codes, and referral records. Admin role only — not a distributor membership.',
 } as const

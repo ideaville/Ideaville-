@@ -36,7 +36,9 @@ function asFlags(settings: unknown) {
 
 export function deriveAppStatus(status: StatusPayload | null, catalog: CatalogPayload | null): AppStatus {
   const persistence = status?.readiness?.persistence ?? catalog?.readiness?.persistence ?? 'unconfigured'
-  const database: AppStatus['database'] = persistence === 'postgres' || persistence === 'memory' ? 'connected' : 'not_connected'
+  // `error` means DATABASE_URL was set but init failed — still not connected; never treat as healthy.
+  const database: AppStatus['database'] =
+    persistence === 'postgres' || persistence === 'memory' ? 'connected' : 'not_connected'
 
   const flags = asFlags(status?.settings ?? catalog?.settings ?? null)
   const activation = flags.activation

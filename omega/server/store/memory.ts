@@ -1,8 +1,7 @@
-import { badRequest, conflict, forbidden, notFound } from '../errors.ts'
+import { badRequest, conflict, forbidden, notFound, unavailable } from '../errors.ts'
 import { newId, nowIso } from '../crypto.ts'
 import {
   DEFAULT_SETTINGS,
-  type AuthUser,
   type CommercialTerm,
   type Distributor,
   type Order,
@@ -39,6 +38,7 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
   const terms = new Map<string, CommercialTerm>()
   const paymentEvents: PaymentEvent[] = []
   const referrals = new Map<string, Referral>()
+  let ownerRecoveryClaim: { status: 'consumed'; fp: string; at: string } | null = null
 
   let chain: Promise<unknown> = Promise.resolve()
   function exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -68,6 +68,9 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
 
     async updateSettings(patch, actor) {
       if (actor.role !== 'admin') throw forbidden()
+      for (const key of Object.keys(patch)) {
+        if (key.startsWith('__')) throw forbidden('Invalid settings key')
+      }
       Object.assign(settings, patch)
       return clone(settings)
     },
@@ -92,6 +95,32 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
 
     async listUsers() {
       return [...users.values()].map(clone)
+    },
+
+    async applyOwnerPasswordRecovery(input) {
+      return exclusive(() => {
+        // Once consumed, stay consumed (secret rotation does not reopen).
+        if (ownerRecoveryClaim?.status === 'consumed') {
+          return { applied: false }
+        }
+        const user = users.get(input.adminId)
+        if (!user || user.role !== 'admin' || !user.active) {
+          throw unavailable('Recovery target missing', 'persistence_init_failed')
+        }
+        users.set(input.adminId, { ...user, password_hash: input.passwordHash })
+        for (const [sid, session] of [...sessions.entries()]) {
+          if (session.user_id === input.adminId) {
+            sessions.delete(sid)
+            sessionsByHash.delete(session.token_hash)
+          }
+        }
+        ownerRecoveryClaim = {
+          status: 'consumed',
+          fp: input.recoveryFingerprint,
+          at: input.consumedAt,
+        }
+        return { applied: true }
+      })
     },
 
     async createSession(session) {
@@ -120,6 +149,15 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       if (!session) return
       sessions.delete(id)
       sessionsByHash.delete(session.token_hash)
+    },
+
+    async deleteSessionsForUser(userId) {
+      for (const [sid, session] of [...sessions.entries()]) {
+        if (session.user_id === userId) {
+          sessions.delete(sid)
+          sessionsByHash.delete(session.token_hash)
+        }
+      }
     },
 
     async createDistributor(d) {
@@ -423,7 +461,37 @@ export function createMemoryStore(seed?: { settings?: Partial<Settings> }): Omeg
       if (input.actor.role !== 'admin') throw forbidden()
       const order = orders.get(input.orderId)
       if (!order) throw notFound('Order not found')
+      if (order.fulfillment_status === 'delivered' || order.fulfillment_status === 'cancelled') {
+        throw conflict('Order is already closed', 'order_closed')
+      }
+      if (input.fulfillmentStatus === 'cancelled' && order.fulfillment_status === 'shipped') {
+        throw conflict('Shipped orders cannot be cancelled', 'order_shipped')
+      }
       const next = { ...order, fulfillment_status: input.fulfillmentStatus, updated_at: nowIso() }
+      if (input.fulfillmentStatus === 'cancelled') {
+        // Release any stock still reserved for this order.
+        if (order.fulfillment_status === 'allocated') {
+          for (const m of movements.filter((x) => x.order_id === order.id && x.reason === 'order_reserve')) {
+            const batch = batches.get(m.batch_id)
+            if (!batch) continue
+            const qty = m.delta_reserved
+            const reserved = batch.qty_reserved - qty
+            if (reserved < 0) throw conflict('Stock integrity error on cancel', 'stock_conflict')
+            batches.set(batch.id, { ...batch, qty_reserved: reserved })
+            movements.push({
+              id: newId(),
+              batch_id: batch.id,
+              delta_on_hand: 0,
+              delta_reserved: -qty,
+              reason: 'order_cancel_release',
+              order_id: order.id,
+              actor_user_id: input.actor.id,
+              created_at: nowIso(),
+            })
+          }
+        }
+        next.status = 'cancelled'
+      }
       if (input.fulfillmentStatus === 'shipped' || input.fulfillmentStatus === 'delivered') {
         // Convert reservation into on-hand decrement once when first shipping.
         if (order.fulfillment_status === 'allocated') {
