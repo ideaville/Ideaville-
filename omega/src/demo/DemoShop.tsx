@@ -5,7 +5,7 @@ import { StatusLine } from '../components/StatusLine'
 import { formatNgn } from '../lib/api'
 import { copy } from '../lib/copy'
 import { canPreviewBrowse, displayUnitKobo } from '../lib/previewStore'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 
 /**
  * Demo storefront — same browse/review UX as live preview shop, fixture catalogue only.

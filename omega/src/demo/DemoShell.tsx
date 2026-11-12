@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { copy } from '../lib/copy'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 import './DemoShell.css'
 
 export function DemoShell() {

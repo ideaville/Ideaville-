@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { api } from '../lib/api'
 import { ApiClientProvider } from './apiClient'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 
 /**
  * Supplies a fixture-backed api client to existing UI action components.

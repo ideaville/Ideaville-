@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { AdminOverview, AuthUser, CatalogProduct, DistributorNetwork, ReferralLookup, ReferralRecord } from '../lib/api'
+import type { CatalogProduct, ReferralRecord } from '../lib/api'
 import { formatNgn } from '../lib/api'
 import {
   DEMO_ADMIN_USER,
@@ -11,60 +11,8 @@ import {
   createInitialDemoAdminOverview,
   createInitialDemoNetwork,
   createInitialDemoOrders,
-  type DemoOrder,
 } from './fixtures'
-
-type DemoMessage = { tone: 'ok' | 'warn'; text: string }
-
-type DemoContextValue = {
-  adminUser: AuthUser
-  distributorUser: AuthUser
-  catalogProducts: CatalogProduct[]
-  network: DistributorNetwork
-  orders: DemoOrder[]
-  admin: AdminOverview
-  lastMessage: DemoMessage | null
-  recordReferral: (input: { prospect_label: string; notes: string }) => Promise<void>
-  lookupReferral: (code: string) => Promise<ReferralLookup>
-  toggleAdminSetting: (key: string) => void
-  demoCreateProduct: (input: {
-    sku: string
-    name: string
-    kind: 'bottle' | 'sample' | 'other'
-    volume_ml: number | null
-    description: string
-  }) => Promise<void>
-  demoUpdateProductSale: (
-    id: string,
-    patch: { saleable?: boolean; approved_for_sale?: boolean; channel_eligibility?: { retail: boolean; trade: boolean } },
-  ) => Promise<void>
-  demoCreatePrice: (input: {
-    product_id: string
-    channel: 'retail' | 'trade'
-    amount_kobo: number
-    label: string
-    activate: boolean
-  }) => Promise<void>
-  demoCreateDistributor: (input: { name: string; code: string; sponsor_id: string | null; notes: string }) => Promise<void>
-  demoUpdateDistributorStatus: (id: string, status: 'pending_terms' | 'active' | 'suspended') => Promise<void>
-  demoCreateBatch: (input: { product_id: string; batch_code: string; qty_on_hand: number; notes: string }) => Promise<void>
-  demoAdjustStock: (input: { batch_id: string; delta_on_hand: number; reason: string }) => Promise<void>
-  demoSetPayment: (
-    orderId: string,
-    input: { payment_status: 'paid' | 'failed' | 'refunded' | 'pending_verification'; note: string },
-  ) => Promise<void>
-  demoSetFulfillment: (orderId: string, input: { fulfillment_status: 'shipped' | 'delivered' | 'cancelled' }) => Promise<void>
-  demoCreateTerm: (input: {
-    distributor_id: string | null
-    kind: string
-    rate_bps: number | null
-    notes: string
-    activate?: boolean
-  }) => Promise<void>
-  noteSimulated: (text: string) => void
-}
-
-const DemoContext = createContext<DemoContextValue | null>(null)
+import { DemoContext, type DemoContextValue } from './useDemo'
 
 function newDemoId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
@@ -74,7 +22,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [network, setNetwork] = useState(createInitialDemoNetwork)
   const [orders, setOrders] = useState(createInitialDemoOrders)
   const [admin, setAdmin] = useState(createInitialDemoAdminOverview)
-  const [lastMessage, setLastMessage] = useState<DemoMessage | null>(null)
+  const [lastMessage, setLastMessage] = useState<DemoContextValue['lastMessage']>(null)
 
   const catalogProducts = useMemo(() => {
     return (admin.products as CatalogProduct[]).map((p) => ({
@@ -108,17 +56,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setLastMessage({ tone: 'ok', text: 'Demo referral recorded in session only — not saved to the database.' })
   }, [network.self.id, network.self.referral_code])
 
-  const lookupReferral = useCallback(async (code: string): Promise<ReferralLookup> => {
+  const lookupReferral = useCallback(async (code: string) => {
     const key = code.trim().toUpperCase()
     const hit = DEMO_LOOKUP_CODES[key]
-    if (!hit) return { found: false }
-    return { found: true, ...hit }
+    if (!hit) return { found: false as const }
+    return { found: true as const, ...hit }
   }, [])
 
   const toggleAdminSetting = useCallback((key: string) => {
     setAdmin((prev) => {
       const settings = { ...(prev.settings as Record<string, unknown>) }
-      settings[key] = !Boolean(settings[key])
+      settings[key] = !settings[key]
       return { ...prev, settings }
     })
     setLastMessage({
@@ -372,14 +320,4 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>
-}
-
-export function useDemo(): DemoContextValue {
-  const ctx = useContext(DemoContext)
-  if (!ctx) throw new Error('useDemo requires DemoProvider')
-  return ctx
-}
-
-export function useDemoOptional(): DemoContextValue | null {
-  return useContext(DemoContext)
 }

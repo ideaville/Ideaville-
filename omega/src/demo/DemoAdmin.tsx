@@ -11,7 +11,7 @@ import {
   TermsPanel,
   type RunAction,
 } from '../pages/AdminActions'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 import '../pages/Admin.css'
 
 const GATES = [

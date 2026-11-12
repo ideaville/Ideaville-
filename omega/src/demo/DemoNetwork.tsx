@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { StatusLine } from '../components/StatusLine'
 import { copy } from '../lib/copy'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 import '../pages/Admin.css'
 import '../pages/Network.css'
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNgn } from '../lib/api'
 import { copy } from '../lib/copy'
-import { useDemo } from './DemoContext'
+import { useDemo } from './useDemo'
 import '../pages/Admin.css'
 
 type Tab = 'orders' | 'stock'

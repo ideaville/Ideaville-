@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { formatNgn } from '../lib/api'
-import { useApiClient } from '../demo/apiClient'
+import { useApiClient } from '../demo/useApiClient'
 import { nairaToKobo } from '../lib/money'
 
 /** Runs an admin write, reports success/failure, and reloads the overview. Resolves true on success. */
